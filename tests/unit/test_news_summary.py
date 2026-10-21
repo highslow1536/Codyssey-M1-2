@@ -131,8 +131,12 @@ def test_research_tool_sources_survive_model_roundtrip():
         instructions="test",
         history=[],
         user_message="뉴스",
-        call_tool=lambda *_: {"items": ITEMS},
+        call_tool=lambda *_: {
+            "items": ITEMS,
+            "summary": {"highlights": [{**ITEMS[0], "source_url": "https://example.test/digest"}]},
+        },
         client=SimpleNamespace(responses=SimpleNamespace(create=lambda **_: next(responses))),
     )
     assert result["sources"][0]["url"] == ITEMS[0]["source_url"]
+    assert any(source["url"] == "https://example.test/digest" for source in result["sources"])
     assert result["tool_trace"][0]["ok"]

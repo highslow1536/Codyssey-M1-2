@@ -161,7 +161,7 @@ class ResearchService:
             vix = pool.submit(self.analysis, "INDEX_VIX", refresh=refresh)
             return {"cnn": cnn.result(), "vix": vix.result()}
 
-    def news(self, market, instrument_id=None, window="24h", *, refresh=True):
+    def news(self, market, instrument_id=None, window="24h", *, refresh=True, use_model=True):
         if market not in {"KR", "US"} or window not in {"24h", "7d"}:
             raise AppError(
                 422, "invalid_news_filter", "뉴스 시장은 KR/US, 기간은 24h/7d여야 합니다."
@@ -183,7 +183,7 @@ class ResearchService:
             self.repository.save_news(items)
             return {
                 "items": items,
-                "summary": summarize_news(items, self.settings),
+                "summary": summarize_news(items, self.settings, use_model=use_model),
                 "truncated": truncated,
                 "coverage_note": payload.get(
                     "coverage_note", "공급원이 반환한 제목·요약만 사용합니다."

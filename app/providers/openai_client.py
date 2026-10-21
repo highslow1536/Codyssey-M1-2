@@ -120,13 +120,15 @@ def research_sources(result):
         sources.append(
             {"url": result["source_url"], "title": "CNN Fear & Greed", "provider": "cnn"}
         )
+    digest = result.get("summary")
+    highlights = digest.get("highlights", []) if isinstance(digest, dict) else []
     sources.extend(
         {
             "url": item["source_url"],
             "title": item["title"],
             "provider": item.get("provider", "news"),
         }
-        for item in result.get("items", [])
+        for item in [*result.get("items", []), *highlights]
         if item.get("source_url")
     )
     for key in ("cnn", "vix"):

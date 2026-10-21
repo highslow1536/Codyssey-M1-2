@@ -472,3 +472,43 @@ def test_research_routes_cached_chat_context_and_persisted_sources(
     restored = next(row for row in detail.json()["messages"] if row["role"] == "assistant")
     assert {source["url"] for source in restored["sources"]} == urls
     assert restored["tool_trace"][0]["tool"] == "search_news"
+
+
+def test_news_tool_does_not_make_a_nested_model_request(firestore_db, owner_uid, monkeypatch):
+    from app.services.news_summary import summarize_news
+    from app.tools.registry import execute_tool
+
+    article = _news_item(
+        NOW, 0, uuid4().hex[:8], instrument_ids=["NASDAQ_AAPL"], age=timedelta(hours=1)
+    )
+    service = _svc(
+        firestore_db,
+        settings=_settings(openai_api_key="test-only", openai_model="test-only"),
+        finnhub=FakeNews([article]),
+    )
+    calls = []
+
+    def unexpected_model(**kwargs):
+        calls.append(kwargs)
+        raise AssertionError("A tool must not launch a nested model")
+
+    def digest(items, settings, *, use_model=True):
+        return summarize_news(
+            items,
+            settings,
+            use_model=use_model,
+            client=SimpleNamespace(responses=SimpleNamespace(create=unexpected_model)),
+        )
+
+    monkeypatch.setattr("app.services.research.summarize_news", digest)
+    monkeypatch.setattr("app.services.research.ResearchService", lambda db: service)
+    result = execute_tool(
+        firestore_db,
+        owner_uid=owner_uid,
+        name="search_news",
+        arguments={"market": "US", "instrument_id": "NASDAQ_AAPL", "window": "24h"},
+    )
+    assert result["items"][0]["source_url"] == article["source_url"]
+    assert result["summary"]["method"] == "extractive"
+    assert result["summary"]["error"] is None
+    assert calls == []

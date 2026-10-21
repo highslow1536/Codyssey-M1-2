@@ -171,7 +171,9 @@ def execute_tool(
 
         service = ResearchService(db)
         if name == "search_news":
-            result = service.news(args.market, args.instrument_id, args.window)
+            # The calling chat model summarizes the articles within its shared budget.
+            # A tool must not launch an additional model request outside that budget.
+            result = service.news(args.market, args.instrument_id, args.window, use_model=False)
             return {
                 **result,
                 "items": result["items"][:5],
