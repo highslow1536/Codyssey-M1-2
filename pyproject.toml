@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stock-market-assistant"
+version = "0.1.0"
+description = "한국·미국 실제 시장 데이터를 이용하는 과제용 AI 비서"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "firebase-admin>=6.6,<8",
+  "openai>=2,<3",
+  "python-dotenv>=1,<2",
+  "pydantic-settings>=2.7,<3",
+  "yfinance>=0.2.65,<2",
+  "pandas>=2.2,<4",
+  "numpy>=2,<3",
+  "httpx>=0.28,<1",
+  "exchange-calendars>=4.8,<5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "jobs"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: requires local Firestore emulator", "live: calls real external providers"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
