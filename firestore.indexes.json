@@ -57,6 +57,74 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "briefing_schedules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "owner_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "next_run_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "briefings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "owner_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "generated_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "briefings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "owner_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "delivery_status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "_lease_until",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "outbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "owner_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "available_at",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -93,6 +161,46 @@
     {
       "collectionGroup": "sentiment",
       "fieldPath": "history",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefings",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefings",
+      "fieldPath": "sources",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefings",
+      "fieldPath": "warnings",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefings",
+      "fieldPath": "data_as_of",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefings",
+      "fieldPath": "parts",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefings",
+      "fieldPath": "_schedule",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefings",
+      "fieldPath": "_send_keys",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "briefing_schedules",
+      "fieldPath": "_fingerprint",
       "indexes": []
     }
   ]

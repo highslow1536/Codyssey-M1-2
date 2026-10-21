@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from google.api_core.exceptions import GoogleAPICallError
 
-from app.api import chat, conversations, data, jobs, market, research
+from app.api import briefings, chat, conversations, data, jobs, market, research
 from app.config import get_settings
 from app.errors import AppError
 
@@ -25,7 +25,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.origins,
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
         expose_headers=["X-Request-ID"],
     )
@@ -86,6 +86,7 @@ def create_app() -> FastAPI:
     application.include_router(market.router)
     application.include_router(jobs.router)
     application.include_router(research.router)
+    application.include_router(briefings.router)
     return application
 
 
