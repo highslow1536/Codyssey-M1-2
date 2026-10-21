@@ -2,7 +2,7 @@
 
 실제 주가와 뉴스를 바탕으로 시장·관심 종목을 설명하고, Discord 브리핑과 조건부 가격 알림을 제공한다. 같은 수집·계산·조회 기능을 웹 채팅과 외부 MCP 클라이언트에서 사용한다.
 
-이 문서는 전체 기능의 구현 기준이다. 현재 백엔드 기본 환경·실제 일봉 수집·Firestore 저장·과제 필수 API를 구현했다. 화면·뉴스·Discord·MCP·배포는 이후 단계이며, 구체적인 구현 상태와 실행법은 [README](../README.md), 검증 결과는 [검증 기록](verification.md)을 따른다. 기준일은 2026년 10월 21일이다.
+이 문서는 전체 기능의 구현 기준이다. 현재 백엔드·실제 일봉 수집·Firestore·과제 필수 API·바닐라 화면·뉴스·시장 심리·기술 지표·채팅 도구를 구현했다. Discord·가격 알림·외부 MCP·배포는 이후 단계이며, 구체적인 구현 상태와 실행법은 [README](../README.md), 검증 결과는 [검증 기록](verification.md)을 따른다. 기준일은 2026년 10월 22일이다. 현재 뉴스 저장 상한(최신 50건), 수집 임대·캐시·실패 재시도, 지표 계산식과 실제 API 인수는 README의 구현 계약을 따른다. 예약 worker는 아직 연결하지 않았으며 브리핑 조회 시 만료된 항목을 수집한다.
 
 ## 1 범위와 완료 기준
 
@@ -270,10 +270,11 @@ Firestore는 컬렉션과 문서로 구성한다. 가격 이력·대화 메시�
 | `quotes/{instrument_id}` | 종목 ID | price_decimal, event_time, fetched_at, resolution, delay_seconds, session, quality_status |
 | `data/{id}` | 사용자+원본 관측 ID의 해시; 수동 입력은 UUID | owner_uid, instrument_id, date, value, memo, source_bar_id, source_revision, source, user_modified, revision, created_at, updated_at |
 | `news_articles/{id}` | 정규화한 원문 URL의 해시 | provider_ids, market, instrument_ids, title, summary, source, source_url, published_at, fetched_at |
+| `research_cache/{key_hash}` | 공급원·대상·기간 키의 SHA-256 | payload, fetched_at, expires_at, last_attempt_at, next_attempt_at, lease_until, attempt_token, error |
 | `sentiment/{id}` | `US_CNN_FNG_거래일` 등 | market, provider, value, rating, event_time, fetched_at, 비교 값, source_url, quality_status |
 | `watchlists/{uid}/items/{instrument_id}` | 사용자 UID와 종목 ID | added_at, display_order |
 | `conversations/{id}` | UUID 또는 chat 요청에서 결정한 ID | owner_uid, title, created_at, updated_at, last_message_preview, message_count, active_turn_id, revision, deleting |
-| `conversations/{id}/messages/{id}` | turn ID+role | role, content, created_at, sequence, turn_id, sources, tool_trace_summary |
+| `conversations/{id}/messages/{id}` | turn ID+role | role, content, created_at, sequence, turn_id, sources, tool_trace, tool_trace_summary, data_as_of |
 | `conversations/{id}/turns/{request_id}` | client_request_id | status, lease_until, context_reference, error_code, started_at, completed_at |
 | `alerts/{id}` | UUID | owner_uid, instrument_id, rule, stage, last_event_time, last_price_decimal, armed_at, trigger_event_id, cycle, active, expires_at, revision |
 | `briefing_schedules/{id}` | UUID | owner_uid, market, instrument_ids, schedule_kind, timezone, local_time/close_offset_minutes, next_run_at, active, destination_alias |
@@ -407,7 +408,8 @@ tick은 봉을 가져올 종목을 합쳐 요청 수를 줄인다. `job_runs`에
 | `get_price_history` | 종목·기간·간격 | 제한된 길이의 시계열·출처 | 조회 |
 | `calculate_indicators` | 종목·기간·지표 목록 | Python 계산 결과 | 조회·계산 |
 | `search_news` | 시장·종목·기간 | 제목·요약·시각·원문 링크 | 조회 |
-| `get_us_sentiment` | 비교 기간 | CNN·VIX·과거 비교 | 조회 |
+| `get_us_sentiment` | 현재 구현은 빈 객체 | CNN·VIX·과거 비교 | 조회 |
+| `get_market_analysis` | 종목 ID | 현재 구현의 최근 1년 Yahoo 원본 지표 | 조회 |
 | `list_alerts` | 활성 여부 | 내 알림 규칙과 상태 | 조회 |
 | `preview_alert_rule` | 자연어 또는 steps | 구조화 조건과 해석·오류 | 미리보기 |
 | `create_alert` | 확인한 규칙·멱등 키 | 저장한 알림 | 사용자 설정 변경 |

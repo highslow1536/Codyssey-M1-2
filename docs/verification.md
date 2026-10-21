@@ -1,6 +1,6 @@
 # 백엔드·바닐라 웹 UI 검증
 
-검증일: 2026년 10월 21일. Python 3.12.14, 프로젝트 `.venv`와 `uv.lock` 사용.
+최신 검증일: 2026년 10월 22일. 아래 초기 데이터·웹 검증은 10월 21일 기록이며, 새 리서치 통합 결과는 별도 절에 기록한다. Python 3.12.14, 프로젝트 `.venv`와 `uv.lock` 사용.
 
 ## 실제 수집과 저장
 
@@ -62,11 +62,31 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 .venv/bin/python -m pytest -q
 
 Firebase SDK 사용 방식은 [웹 인증 시작](https://firebase.google.com/docs/auth/web/start), [비밀번호 인증](https://firebase.google.com/docs/auth/web/password-auth), [인증 에뮬레이터 연결](https://firebase.google.com/docs/emulator-suite/connect_auth)을 확인했다. 재현 명령은 README의 웹 검사 절에 있다.
 
+## 뉴스·심리·기술 지표 통합 (2026년 10월 22일)
+
+실제 네트워크로 Yahoo의 S&P 500·VIX 최근 1년 완료 일봉을 각각 **251건** 재수집했다. S&P 500의 수익률·표본 로그수익률 변동성·이동평균·Wilder RSI·거래량 비율과 VIX의 변화·경험적 백분위를 계산하고 로컬 공식 Firestore 에뮬레이터의 원본 및 캐시에 저장했다. 이 조회는 사용자 편집 `data`를 만들거나 바꾸지 않는다.
+
+CNN의 실제 JSON 피드는 HTTP 200을 반환했다. 실제 키 `fear_and_greed_historical`에서 **252개** 관측을 읽어 정규화·정렬하고 현재 값과 비교 값, 일별 `sentiment`, `research_cache`에 저장했다. 마지막 점검의 관측 시각은 2026-10-21 16:33:02 UTC, 성공 수집 시각은 16:38:50 UTC였다. 이 값은 검증 당시의 관측이며 현재 투자 정보로 표시하는 고정 예시가 아니다. `artifacts/cnn-live-source.json`·`artifacts/research-live-verification.json`에 로컬 증빙을 보관했다.
+
+Naver·Finnhub 키는 아직 발급되지 않아 실제 뉴스 실호출을 실행하지 않았다. API 요청 헤더·기간·페이지·형식·HTML 정리·URL·중복 제거·429/인증/형식 오류는 **테스트 전용 페이로드**로 검증했다. 실제 앱은 키가 없으면 `news_not_configured`를 반환하며 시연용 기사를 생성하지 않는다. OpenAI도 실제 키가 없어 요약·채팅 모델 왕복은 테스트 응답으로 검사했다. 모델 미설정·실패·잘못된 기사 인용은 실제 제목·요약 발췌 모드로 처리한다.
+
+- Python 전체 **101개 통과**(단위 86·Firestore 통합 15), ruff 검사·포맷·compileall 통과. Starlette TestClient의 httpx 지원 중단 예정 경고 1개는 남아 있다.
+- 새 API 4개와 인증·필터 검증, 원본/사용자 데이터 분리, 캐시 기간·실패 후 재시도 억제·오래된 실제 데이터 보존·부분 장애·수집 임대·시도 토큰 차단을 검사했다.
+- 뉴스가 기간 밖으로 이동하면 기사와 요약에서 함께 제거되는지, 빈 결과와 공급원 장애를 구별하는지 확인했다. CNN의 0점·실제 history 필드·오류 점수·미래 시각·이력 상한을 검사했다.
+- 지표 표본 수 경계·비정상 값·날짜 중복·다른 종목 제외·Wilder 재귀와 RSI 보합/일방 상승/하락을 검사했다. 모델 도구 4개는 엄격한 인수 검증·사용량 상한을 유지한다.
+- 채팅은 별도 외부 호출 없이 저장된 원본 리서치를 문맥으로 읽고, 도구로 얻은 출처도 답변·Firestore 메시지·대화 재조회에서 보존한다. 길이 제한 후에도 모델에 전달하는 JSON이 깨지지 않는지 확인했다.
+- Node 검사 **27개 통과**. 기존 실제 Auth·Firestore·Yahoo 브라우저 검사를 채팅 변경 후 다시 통과했다.
+- 새 `frontend/tests/research-browser.mjs`의 첫 단계는 실제 Auth·API·Yahoo/CNN 저장 데이터를 사용했다. 1440px·390px에서 실제 지표·CNN·VIX·뉴스 키 누락 상태를 확인하고 `artifacts/web-research-desktop.png`·`web-research-mobile.png`를 생성했다. 실제 리서치 출처가 채팅 응답에서 표시되고 새로고침 후 대화 재열기에서도 유지되는지 확인했다. 모델 문장은 격리된 서버의 테스트 응답이다.
+- 같은 브라우저 검사의 이후 단계만 overview 응답을 명시적인 테스트용 페이로드로 바꿨다. CNN 0점, 오래된 데이터와 공급원 오류, 요약 인용·실패 안내, 악성 HTML의 텍스트 표시, javascript 링크 거부, 종목·기간 인수·로딩 상태, 실패한 조회에서 이전 종목 표시 제거, 로그아웃 중 늦은 오류 억제, 모바일 가로 넘침을 확인했다. 런타임 앱에는 이 응답 대체 코드가 없다.
+
+통합 검사는 로컬 테스트 캐시를 초기화한다. 실제 브라우저 검증 전에는 실제 수집 증빙을 원래 수집 시각과 함께 복원했다. 이후 새 환경에서의 브리핑은 실제 공급원을 다시 조회한다. 검증용 서버와 에뮬레이터는 종료했다.
+
 ## 아직 실행하지 않은 검증
 
 - 사용자 Firebase 프로젝트의 서비스 계정·권한·클라우드 복합 인덱스 배포 후 조회. 에뮬레이터는 복합 인덱스 존재 여부를 강제하지 않는다.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`을 이용한 실제 모델 응답.
 - 실제 Firebase 클라우드 이메일·Google 로그인과 승인 도메인 설정. 이메일 로그인은 공식 로컬 인증 에뮬레이터에서 검증했다.
-- 뉴스·CNN·기술 지표, Discord·MCP, Render·Vercel 배포. 이 기능은 이번 구현 범위 이후다.
+- Naver·Finnhub 실제 키 호출과 실제 OpenAI 한국어 뉴스 요약.
+- Discord·가격 알림·외부 MCP, Render·Vercel 배포. 이 기능은 이후 범위다.
 
 실행 방법과 필요한 키는 [README](../README.md)와 [환경변수 예시](../.env.example)에 있다. 비밀 키·웹훅·서버 서비스 계정은 생성하거나 저장하지 않았다.
