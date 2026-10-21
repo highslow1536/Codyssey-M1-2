@@ -211,3 +211,13 @@ def test_split_keeps_source_urls_intact_when_lines_fit():
     assert any(url in part for part in parts)
     assert "".join(part.split("] ", 1)[1] for part in parts) == text
     assert all(_utf16_len(part) <= 2000 for part in parts)
+
+
+def test_alert_prefix_preserves_unicode_content_and_delivery_identity():
+    text = "가격 확인😀\n" * 500
+    parts = split_content(text, "price-event", kind="alert")
+    assert all(p.startswith("[alert price-event ") for p in parts)
+    assert all(_utf16_len(p) <= 2000 for p in parts)
+    assert "".join(p.split("] ", 1)[1] for p in parts) == text
+    with pytest.raises(AppError):
+        split_content("content", "event", kind="unknown")

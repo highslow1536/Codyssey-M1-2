@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
-from types import SimpleNamespace
 
 from app.config import get_settings
 from app.errors import AppError
-from app.providers.discord import DeliveryError, DiscordProvider, split_content
+from app.providers.discord import split_content
 from app.repositories.briefings import BriefingRepository
 from app.services.briefing_content import build_content
+from app.services.delivery import drain_outbox
 from app.services.research import ResearchService
 
 
@@ -41,14 +41,12 @@ class BriefingService:
             )
             parts = split_content(content["text"], claim["id"])
         except Exception:
-            # No raw exception/provider URL/secret is persisted or printed.
             content, parts = None, []
         return self.repository.finish_build(claim, content, parts, self.clock())
 
     def tick(self, uid, *, schedule_limit=10, part_limit=30):
         now = self.clock()
         counts = {"generated": 0, "parts_sent": 0, "delivery_errors": 0}
-        # Recover abandoned generation before reserving new slots.
         for row in self.repository.recover_builds(uid, now, schedule_limit):
             claim = self.repository.reclaim(uid, row.id, self.clock())
             if claim and self._generate(claim):
@@ -57,38 +55,14 @@ class BriefingService:
             claim = self.repository.reserve(uid, row.id, self.clock())
             if claim and self._generate(claim):
                 counts["generated"] += 1
-        for _ in range(part_limit):
-            rows = list(self.repository.ready(uid, self.clock(), part_limit))
-            claim = None
-            for row in rows:
-                claim = self.repository.claim_part(uid, row.id, self.clock())
-                if claim:
-                    break
-            if not claim:
-                break
-            result, error = None, None
-            try:
-                provider = self.discord or DiscordProvider(self.settings.discord_webhook_url)
-                result = provider.send(claim["content"])
-            except DeliveryError as exc:
-                error = exc
-            except AppError as exc:
-                error = SimpleNamespace(
-                    code=exc.code,
-                    message=exc.message,
-                    retryable=False,
-                    retry_after=None,
-                    uncertain=False,
-                )
-            except Exception:
-                error = SimpleNamespace(
-                    code="discord_unavailable",
-                    message="전송 결과를 확인하지 못했습니다.",
-                    retryable=True,
-                    retry_after=None,
-                    uncertain=True,
-                )
-            saved = self.repository.finish_part(claim, self.clock(), result=result, error=error)
-            if saved:
-                counts["parts_sent" if result else "delivery_errors"] += 1
+        counts.update(
+            drain_outbox(
+                self.repository,
+                uid,
+                self.settings,
+                self.clock,
+                discord=self.discord,
+                part_limit=part_limit,
+            )
+        )
         return counts

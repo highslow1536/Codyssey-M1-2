@@ -207,7 +207,9 @@ class DiscordProvider:
         raise DeliveryError("discord_rejected", "Discord delivery refused.", False, None, False)
 
 
-def split_content(text: str, event_id: object, max_length: int = 1800) -> list[str]:
+def split_content(
+    text: str, event_id: object, max_length: int = 1800, kind: str = "briefing"
+) -> list[str]:
     """Split text into stable prefixed parts, each <=2000 UTF-16 units."""
     if not isinstance(text, str):
         raise AppError(422, "discord_invalid_content", "Content must be text.")
@@ -215,13 +217,15 @@ def split_content(text: str, event_id: object, max_length: int = 1800) -> list[s
         raise AppError(422, "discord_invalid_content", "max_length invalid.")
     if max_length <= 0:
         raise AppError(422, "discord_invalid_content", "max_length invalid.")
+    if kind not in ("briefing", "alert"):
+        raise AppError(422, "discord_invalid_content", "kind invalid.")
     eid = str(event_id) if isinstance(event_id, (str, int)) else None
     if eid is None or not eid.strip():
         raise AppError(422, "discord_invalid_content", "event_id required.")
     eid = eid.strip()
     total = 1
     while True:
-        longest = _utf16_len("[briefing " + eid + " " + str(total))
+        longest = _utf16_len("[" + kind + " " + eid + " " + str(total))
         longest += _utf16_len("/" + str(total) + "] ")
         budget = min(max_length, MAX_CONTENT_UNITS - longest)
         if budget <= 0:
@@ -235,17 +239,17 @@ def split_content(text: str, event_id: object, max_length: int = 1800) -> list[s
     out: list[str] = []
     widths = _utf16_widths(text)
     start = 0
-    budget = min(max_length, MAX_CONTENT_UNITS - _prefix_len(eid, total, total))
+    budget = min(max_length, MAX_CONTENT_UNITS - _prefix_len(eid, total, total, kind))
     for index in range(1, total + 1):
-        prefix = "[briefing " + eid + " " + str(index) + "/" + str(total) + "] "
+        prefix = "[" + kind + " " + eid + " " + str(index) + "/" + str(total) + "] "
         end = _chunk_end(text, widths, start, budget)
         out.append(prefix + text[start:end])
         start = end
     return out
 
 
-def _prefix_len(eid: str, index: int, total: int) -> int:
-    return _utf16_len("[briefing " + eid + " " + str(index) + "/" + str(total) + "] ")
+def _prefix_len(eid: str, index: int, total: int, kind: str = "briefing") -> int:
+    return _utf16_len("[" + kind + " " + eid + " " + str(index) + "/" + str(total) + "] ")
 
 
 def _utf16_widths(text: str) -> list[int]:
