@@ -2,7 +2,7 @@
 
 Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약으로 답하는 AI 비서를 개발합니다. 전체 설계는 [프로젝트 설계서](docs/project-design.md)에 있습니다.
 
-현재 구현은 **백엔드 기반과 과제 필수 API**입니다. 웹 UI, Naver/Finnhub 뉴스, CNN 심리 지표, Discord 예약·알림, MCP 서버는 다음 단계입니다. 해당 기능의 키 이름만 미리 준비했으며, 아직 동작하는 기능으로 표시하지 않습니다.
+현재 구현은 **백엔드·과제 필수 API와 바닐라 웹 UI**입니다. Naver/Finnhub 뉴스, CNN 심리 지표, Discord 예약·알림, MCP 서버는 다음 단계입니다. 해당 기능의 키 이름만 미리 준비했으며, 아직 동작하는 기능으로 표시하지 않습니다.
 
 ## 구현 범위
 
@@ -12,6 +12,7 @@ Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약�
 - `instruments`·`market_bars` 원본과 수정 가능한 사용자 `data` 분리, 중복 방지·revision 충돌 검사.
 - 데이터 CRUD·전체 필터 요약, 대화 저장·목록·메시지 페이지 조회·하위 문서 삭제.
 - 서버 요약을 주입하는 OpenAI Responses 채팅, 자동 저장·재시도·동시 요청 제한, `summarize_dataset` 도구.
+- 프레임워크 없는 HTML/CSS/JS 화면: 이메일·Google Firebase 로그인, 실제 Yahoo 수집, CRUD·기간 전체 요약·목록 차트, AI 채팅과 대화 기록 복원, 모바일 화면.
 
 장중 수집·기술 지표·가격 알림은 아직 구현 전입니다. 일봉의 `event_time`은 거래소 세션 종료 시각이고 `fetched_at`은 공급원 수집 시각입니다. 데이터가 없거나 외부 호출이 실패하면 가짜 값으로 대체하지 않습니다.
 
@@ -78,7 +79,7 @@ Yahoo에는 키가 필요하지 않습니다. 기본은 9개 대상 각각 최�
 - API 문서: `http://localhost:8000/docs`.
 - 나머지 API: `Authorization: Bearer <Firebase ID token>` 필요. API 키·서비스 계정 JSON·Firebase custom token을 이 자리에 넣지 마세요.
 
-웹 로그인 구현 전에는 Firebase Auth SDK의 로그인 결과에서 `user.getIdToken()`으로 얻은 ID token을 Swagger의 **Authorize**에 입력해 호출할 수 있습니다. 토큰이 만료되면 다시 발급받습니다. `ALLOWED_ORIGINS`에는 사용할 프런트 출처를 쉼표로 구분해 설정합니다.
+웹 화면은 Firebase SDK의 `user.getIdToken()`으로 받은 ID token을 API에 전달합니다. Swagger에서는 같은 토큰을 **Authorize**에 입력할 수 있습니다. `ALLOWED_ORIGINS`에는 사용할 프런트 출처를 쉼표로 구분해 설정합니다.
 
 | 메서드 | 경로 | 동작 |
 | --- | --- | --- |
@@ -145,15 +146,75 @@ JOB_OWNER_UID=YOUR_EMULATOR_AUTH_UID
 
 경계값 테스트의 작은 입력과 모델 스텁은 테스트 전용입니다. 서비스 실행 시 합성 데이터·가짜 답변 대체 경로는 없습니다. `tests/fixtures/yahoo_aapl_daily.json`은 실제 Yahoo 응답의 일부이며 수집 시각·URL을 기록했습니다. 실제 OpenAI 호출은 키를 설정한 뒤 별도로 점검해야 합니다.
 
+## 웹 화면 실행
+
+Node **22 이상**으로 정적 파일을 빌드합니다. 실행 화면은 HTML/CSS/ES modules만 사용하며 Firebase SDK는 고정된 버전의 공식 CDN에서 가져옵니다. Playwright는 개발 검사 전용입니다.
+
+1. Firebase Console의 Authentication에서 **이메일/비밀번호**를 활성화하고 사용자를 등록합니다. Google 로그인도 사용하려면 해당 제공자를 활성화합니다. 웹에 회원가입 기능은 없으며 허용 UID는 서버에서 관리합니다.
+2. 프로젝트 설정 → 일반에서 웹 앱을 추가하고 공개 `firebaseConfig` 객체를 **JSON 한 줄**로 `.env`의 `FIREBASE_WEB_CONFIG_JSON`에 입력합니다. 서비스 계정 JSON과 다른 설정입니다.
+3. Authentication → 설정 → 승인된 도메인에 `localhost`와 실제 Vercel 도메인을 등록합니다. 서버의 `ALLOWED_ORIGINS`에도 프런트의 정확한 출처를 추가합니다.
+4. `.env`에 로컬 `API_BASE_URL=http://localhost:8000`과 서버 설정을 입력하고 API를 실행합니다.
+
+```bash
+# 터미널 1: 프로젝트 루트
+.venv/bin/uvicorn app.main:app --reload --port 8000
+# 터미널 2: 프로젝트 루트. 정적 빌드는 패키지 설치 없이 가능
+node frontend/scripts/build.mjs
+python3 -m http.server 5173 --directory frontend/dist
+```
+
+`http://localhost:5173`을 엽니다. 이메일/비밀번호 또는 Google로 로그인합니다. 로그인 상태는 탭 세션에 보관하며 새로고침 때 복원됩니다. 로그아웃 시 개인 화면을 지우고 진행 중인 요청을 취소합니다. 설정을 바꾼 뒤에는 다시 빌드하세요. 공개 설정이 없으면 로그인을 비활성화하고 오류를 표시합니다.
+
+- **데이터 워크스페이스**: 종목·날짜 조회, Yahoo 실제 수집, 직접 추가·수정·삭제, 더 불러오기. 수정 시 revision 충돌을 서버에서 검사합니다. 추가 요청을 그대로 재시도하면 같은 idempotency key를 사용합니다.
+- **전체 요약과 차트**: 요약은 선택 기간의 모든 기록으로 계산하고, 차트는 현재 불러온 목록만 표시합니다. 수집·직접 입력·수정 기록의 출처를 구분합니다. 빈 데이터는 `—`로 표시합니다.
+- **AI 리서치 대화**: 선택 종목의 **최근 1년** 분석 데이터를 사용합니다. 데이터 화면의 날짜 필터는 채팅에 적용되지 않습니다. 질문을 보내면 대화가 서버에 자동 저장됩니다. 실패 시 같은 질문 재시도 버튼은 원래 요청 ID와 본문을 유지합니다.
+- **대화 기록**: 목록에서 선택하면 메시지를 첫 페이지부터 끝까지 순서대로 불러옵니다. 새 대화·삭제를 지원합니다. 큰 대화의 202 삭제 작업은 간격을 두고 최대 8회 재개하고, 남은 작업은 목록의 ↻ 버튼으로 이어서 처리합니다. 새로고침·연결 종료 뒤에는 서버 CLI로 정리를 재개할 수 있습니다.
+
+모든 개인 데이터는 FastAPI를 통해서만 읽고 씁니다. 브라우저는 Firestore에 직접 접근하지 않습니다. 외부 메모·대화는 HTML로 실행하지 않고 텍스트로 표시합니다. OpenAI 키가 없으면 채팅 오류가 표시되며 가짜 답변은 생성하지 않습니다.
+
+### 웹 검사 재현
+
+```bash
+pnpm --dir frontend install --frozen-lockfile
+pnpm --dir frontend test
+pnpm --dir frontend exec playwright install chromium
+```
+
+브라우저 통합 검사는 공식 Auth·Firestore 에뮬레이터와 실제 API를 사용합니다. **모델 출력만** 별도 테스트 서버 안에서 대체합니다. 운영 API에 이 코드가 포함되거나 인증을 우회하는 설정은 없습니다. 먼저 `firebase emulators:start --only firestore,auth --project demo-stock-assistant`를 실행하고 다음을 별도 터미널에서 실행합니다.
+
+```bash
+# 테스트 API: 알려진 임시 계정과 실제 Yahoo 응답 3건을 로컬에만 저장
+APP_ENV=test FIREBASE_PROJECT_ID=demo-stock-assistant \
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+ALLOWED_USER_UIDS=browser-test-owner,browser-test-other \
+OPENAI_API_KEY=browser-test-only OPENAI_MODEL=browser-test-stub \
+PYTHONPATH=. .venv/bin/python frontend/tests/serve_api.py
+```
+
+```bash
+# 테스트 전용 공개 설정으로 빌드하고 정적 서버 실행
+API_BASE_URL=http://localhost:8000 \
+FIREBASE_WEB_CONFIG_JSON='{"apiKey":"demo-key","authDomain":"demo-stock-assistant.firebaseapp.com","projectId":"demo-stock-assistant","appId":"1:demo:web:test"}' \
+FRONTEND_AUTH_EMULATOR_URL=http://127.0.0.1:9099 node frontend/scripts/build.mjs
+python3 -m http.server 5173 --directory frontend/dist
+# 다른 터미널
+pnpm --dir frontend browser:test
+```
+
+브라우저 검사는 실제 Yahoo 재수집도 호출하므로 인터넷 연결이 필요합니다. `artifacts/web-*.png`에 화면을 저장합니다. 테스트 후 에뮬레이터·서버를 종료하고 개인 설정으로 다시 빌드하세요. 클라우드 연결에서는 세 에뮬레이터 변수를 모두 비웁니다. 프런트 에뮬레이터 연결은 localhost에서만 허용합니다.
+
 ## 배포와 다음 단계
 
 `render.yaml`은 백엔드 배포 설정입니다. 아직 배포하지 않았습니다. Render의 환경변수에는 `.env.example` 중 서버 필수 항목을 입력하고, 에뮬레이터 변수는 설정하지 않습니다. `/healthz` 정상만으로 Firebase·OpenAI 연동 완료를 의미하지 않습니다. 실제 API 호출도 확인하세요.
 
-이후 구현 순서는 바닐라 데이터·대화·채팅 UI → 기술 지표·뉴스·심리 → Discord 브리핑 → 조건부 알림 → MCP → Vercel·Render 통합 배포입니다. 배포 URL과 필수 화면 증빙은 실제 실행 후 추가합니다.
+`vercel.json`은 프로젝트 루트에서 `node frontend/scripts/build.mjs`를 실행하고 `frontend/dist`를 배포하도록 구성했습니다. Vercel에는 `API_BASE_URL`과 `FIREBASE_WEB_CONFIG_JSON`만 넣습니다. 서버 키·서비스 계정·Discord 웹훅은 Render에만 저장합니다. 빌드는 공개 설정 세 항목과 Firebase 웹 구성의 허용된 필드만 출력하며 서비스 계정 입력은 거부합니다. Google 로그인에는 Vercel 도메인 승인도 필요합니다. 배포는 아직 수행하지 않았습니다.
+
+이후 구현 순서는 기술 지표·뉴스·심리 → Discord 브리핑 → 조건부 알림 → MCP → Vercel·Render 통합 배포입니다.
 
 | 제출 항목 | 상태 |
 | --- | --- |
 | 백엔드 필수 API | 구현, 로컬 검증 결과는 `docs/verification.md` 참조 |
 | 실제 Yahoo 수집·Firestore 저장 | 수집기 구현, 로컬 에뮬레이터 검증; 클라우드는 자격 설정 후 확인 |
 | 실제 OpenAI 답변 | 연동 구현, API 키·모델 지정 후 실호출 필요 |
-| 웹·Discord·MCP·배포 URL·스크린샷 | 다음 단계 |
+| 바닐라 웹 UI·화면 증빙 | 구현, 로컬 데스크톱·모바일 검증 및 `artifacts/web-*.png` |
+| Discord·MCP·배포 URL | 다음 단계 |
