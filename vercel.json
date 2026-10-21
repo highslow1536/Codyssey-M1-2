@@ -1,0 +1,5 @@
+{
+  "buildCommand": "node frontend/scripts/build.mjs",
+  "outputDirectory": "frontend/dist",
+  "cleanUrls": true
+}
