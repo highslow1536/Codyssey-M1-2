@@ -9,6 +9,7 @@ import { createApi } from "./api.js";
 import { initializeData } from "./data.js";
 import { initializeChat } from "./chat.js";
 import { initializeResearch } from "./research.js";
+import { initializeBriefings } from "./briefings.js";
 import { $, el, localDate, status, errorMessage } from "./ui.js";
 
 let user = null,
@@ -38,52 +39,64 @@ const data = initializeData({
 });
 const chat = initializeChat({ request });
 const research = initializeResearch({ request });
+const briefings = initializeBriefings({ request });
 const today = new Date(),
   start = new Date(today);
 start.setFullYear(start.getFullYear() - 1);
 $("start-date").value = localDate(start);
 $("end-date").value = localDate(today);
 function navigate() {
-  const view = ["#chat", "#research"].includes(location.hash)
+  const view = ["#chat", "#research", "#briefings"].includes(location.hash)
     ? location.hash.slice(1)
     : "data";
   const isChat = view === "chat",
-    isResearch = view === "research";
+    isResearch = view === "research",
+    isBriefings = view === "briefings";
   $("data-view").hidden = view !== "data";
   $("chat-view").hidden = !isChat;
   $("research-view").hidden = !isResearch;
+  $("briefings-view").hidden = !isBriefings;
   document.querySelectorAll("[data-view]").forEach((link) => {
     const active = link.dataset.view === view;
     link.classList.toggle("active", active);
     if (active) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
-  $("breadcrumb").textContent = isResearch
-    ? "시장 브리핑"
-    : isChat
-      ? "AI 리서치 대화"
-      : "데이터 워크스페이스";
-  $("page-eyebrow").textContent = isResearch
-    ? "MARKET BRIEFING"
-    : isChat
-      ? "AI RESEARCH CHAT"
-      : "DATA WORKSPACE";
+  $("breadcrumb").textContent = isBriefings
+    ? "Discord 정기 브리핑"
+    : isResearch
+      ? "시장 브리핑"
+      : isChat
+        ? "AI 리서치 대화"
+        : "데이터 워크스페이스";
+  $("page-eyebrow").textContent = isBriefings
+    ? "SCHEDULED BRIEFINGS"
+    : isResearch
+      ? "MARKET BRIEFING"
+      : isChat
+        ? "AI RESEARCH CHAT"
+        : "DATA WORKSPACE";
   $("page-title").replaceChildren(
     document.createTextNode(
-      isResearch
-        ? "뉴스와 지표로 읽는 시장의 온도"
-        : isChat
-          ? "시장을 이해하는 또 하나의 시선"
-          : "숫자에서 시작하는 시장 읽기",
+      isBriefings
+        ? "정해진 시간에 도착하는 시장 소식"
+        : isResearch
+          ? "뉴스와 지표로 읽는 시장의 온도"
+          : isChat
+            ? "시장을 이해하는 또 하나의 시선"
+            : "숫자에서 시작하는 시장 읽기",
     ),
     el("span", "", "."),
   );
-  $("page-description").textContent = isResearch
-    ? "실제 뉴스, 미국 시장 심리, 원본 일봉으로 계산한 변동성을 함께 살펴보세요."
-    : isChat
-      ? "분석 데이터를 바탕으로 질문하고, 이전 대화의 맥락을 이어가세요."
-      : "관심 지수와 종목의 데이터를 수집하고, 나의 분석 기록을 쌓아보세요.";
+  $("page-description").textContent = isBriefings
+    ? "한국·미국 시장과 관심 종목의 브리핑을 예약하고, 전송 이력을 확인하세요."
+    : isResearch
+      ? "실제 뉴스, 미국 시장 심리, 원본 일봉으로 계산한 변동성을 함께 살펴보세요."
+      : isChat
+        ? "분석 데이터를 바탕으로 질문하고, 이전 대화의 맥락을 이어가세요."
+        : "관심 지수와 종목의 데이터를 수집하고, 나의 분석 기록을 쌓아보세요.";
   if (isResearch && user && instruments.length) research.load();
+  if (isBriefings && user && instruments.length) briefings.load();
 }
 window.addEventListener("hashchange", navigate);
 navigate();
@@ -98,6 +111,7 @@ async function onAuthChange(nextUser) {
   data.reset();
   chat.reset();
   research.reset();
+  briefings.reset();
   instruments = [];
   $("instrument").replaceChildren();
   $("chat-instrument").replaceChildren();
@@ -119,6 +133,7 @@ async function onAuthChange(nextUser) {
     if (ownSession !== session) return;
     instruments = result.items;
     research.setInstruments(instruments);
+    briefings.setInstruments(instruments);
     for (const select of [$("instrument"), $("chat-instrument")]) {
       select.replaceChildren(
         ...instruments.map((item) => {
@@ -135,6 +150,8 @@ async function onAuthChange(nextUser) {
     await Promise.all([data.load(), chat.loadList()]);
     if (ownSession === session && location.hash === "#research")
       research.load();
+    if (ownSession === session && location.hash === "#briefings")
+      briefings.load();
   } catch (error) {
     if (ownSession === session && error.name !== "AbortError") {
       status("data-status", errorMessage(error), true);

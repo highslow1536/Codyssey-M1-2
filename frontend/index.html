@@ -31,6 +31,10 @@
             ><span aria-hidden="true">◈</span> 시장 브리핑
             <span class="nav-arrow">↗</span></a
           >
+          <a class="nav-link" href="#briefings" data-view="briefings"
+            ><span aria-hidden="true">▣</span> Discord 예약
+            <span class="nav-arrow">↗</span></a
+          >
           <a class="nav-link" href="#chat" data-view="chat"
             ><span aria-hidden="true">✳</span> AI 리서치 대화
             <span class="nav-arrow">↗</span></a
@@ -401,6 +405,272 @@
                 <div id="research-news-items"></div>
                 <p id="research-news-note" class="quality-note"></p>
               </section>
+            </section>
+            <section
+              id="briefings-view"
+              aria-label="Discord 예약 브리핑"
+              hidden
+            >
+              <div class="briefings-grid">
+                <section class="panel briefing-panel" aria-label="예약 관리">
+                  <div class="section-heading">
+                    <div>
+                      <span class="eyebrow">SCHEDULED DELIVERY</span>
+                      <h2>Discord 예약</h2>
+                    </div>
+                    <span id="briefing-discord-chip" class="chip"></span>
+                  </div>
+                  <div id="briefing-schedule-list" class="briefing-list"></div>
+                  <form id="briefing-schedule-form" class="briefing-form">
+                    <div class="section-heading">
+                      <h3 id="briefing-form-title">새 예약</h3>
+                      <button
+                        class="button subtle"
+                        id="briefing-reload"
+                        type="button"
+                      >
+                        다시 불러오기
+                      </button>
+                    </div>
+                    <div class="briefing-row">
+                      <label
+                        >시장<select id="briefing-market">
+                          <option value="KR">KR</option>
+                          <option value="US">US</option>
+                        </select></label
+                      >
+                      <label
+                        >방식<select id="briefing-kind">
+                          <option value="market_close">장 마감 기준</option>
+                          <option value="fixed_time">지정 시각</option>
+                        </select></label
+                      >
+                    </div>
+                    <fieldset id="briefing-instruments" class="check-list">
+                      <legend>종목 (최대 4개 · 비워두면 시장 전체)</legend>
+                    </fieldset>
+                    <div class="briefing-row">
+                      <label
+                        >시간대<select id="briefing-timezone">
+                          <option value="Asia/Seoul">Asia/Seoul</option>
+                          <option value="America/New_York">
+                            America/New_York
+                          </option>
+                          <option value="UTC">UTC</option>
+                        </select></label
+                      >
+                      <label
+                        >지정 시각<input
+                          id="briefing-local-time"
+                          type="time"
+                          value="08:00"
+                      /></label>
+                      <label
+                        >마감 후 전송(분)<input
+                          id="briefing-offset"
+                          type="number"
+                          min="0"
+                          max="180"
+                          value="40"
+                      /></label>
+                    </div>
+                    <fieldset class="check-list">
+                      <legend>
+                        요일 (지정 시각만 · 장 마감은 실제 거래일 기준)
+                      </legend>
+                      <label class="check-item"
+                        ><input
+                          class="briefing-weekday"
+                          type="checkbox"
+                          value="0"
+                          checked
+                        /><span>월</span></label
+                      >
+                      <label class="check-item"
+                        ><input
+                          class="briefing-weekday"
+                          type="checkbox"
+                          value="1"
+                          checked
+                        /><span>화</span></label
+                      >
+                      <label class="check-item"
+                        ><input
+                          class="briefing-weekday"
+                          type="checkbox"
+                          value="2"
+                          checked
+                        /><span>수</span></label
+                      >
+                      <label class="check-item"
+                        ><input
+                          class="briefing-weekday"
+                          type="checkbox"
+                          value="3"
+                          checked
+                        /><span>목</span></label
+                      >
+                      <label class="check-item"
+                        ><input
+                          class="briefing-weekday"
+                          type="checkbox"
+                          value="4"
+                          checked
+                        /><span>금</span></label
+                      >
+                      <label class="check-item"
+                        ><input
+                          class="briefing-weekday"
+                          type="checkbox"
+                          value="5"
+                        /><span>토</span></label
+                      >
+                      <label class="check-item"
+                        ><input
+                          class="briefing-weekday"
+                          type="checkbox"
+                          value="6"
+                        /><span>일</span></label
+                      >
+                    </fieldset>
+                    <label class="check-item"
+                      ><input
+                        id="briefing-active"
+                        type="checkbox"
+                        checked
+                      /><span>활성</span></label
+                    >
+                    <p
+                      id="briefing-schedule-status"
+                      class="status"
+                      role="status"
+                    ></p>
+                    <div class="dialog-actions">
+                      <button
+                        id="briefing-cancel-edit"
+                        type="button"
+                        class="button secondary"
+                        hidden
+                      >
+                        수정 취소
+                      </button>
+                      <button
+                        id="briefing-save"
+                        type="submit"
+                        class="button primary"
+                      >
+                        예약 만들기
+                      </button>
+                    </div>
+                  </form>
+                  <p class="quality-note">
+                    예약 실행과 Discord 전송은 별도 워커가 처리합니다.
+                    일시정지·삭제는 이후 실행에만 적용되며 이미 대기열에 들어간
+                    브리핑은 전송될 수 있습니다. 장 마감 기준은 실제 거래일에만
+                    실행되고 요일 선택은 적용되지 않습니다.
+                  </p>
+                </section>
+                <section
+                  class="panel briefing-panel"
+                  aria-label="수동 미리보기"
+                >
+                  <div class="section-heading">
+                    <div>
+                      <span class="eyebrow">MANUAL PREVIEW</span>
+                      <h2>미리보기·전송</h2>
+                    </div>
+                  </div>
+                  <form id="briefing-preview-form" class="briefing-form">
+                    <label
+                      >시장<select id="briefing-preview-market">
+                        <option value="KR">KR</option>
+                        <option value="US">US</option>
+                      </select></label
+                    >
+                    <fieldset
+                      id="briefing-preview-instruments"
+                      class="check-list"
+                    >
+                      <legend>종목 (최대 4개 · 비워두면 시장 전체)</legend>
+                    </fieldset>
+                    <button
+                      id="briefing-preview-run"
+                      type="submit"
+                      class="button primary"
+                    >
+                      미리보기 생성
+                    </button>
+                  </form>
+                  <p
+                    id="briefing-preview-status"
+                    class="status"
+                    role="status"
+                  ></p>
+                  <div id="briefing-preview-result"></div>
+                  <div class="dialog-actions">
+                    <button
+                      id="briefing-send-retry"
+                      type="button"
+                      class="button secondary"
+                      hidden
+                    >
+                      같은 키로 다시 시도
+                    </button>
+                    <button
+                      id="briefing-send"
+                      type="button"
+                      class="button primary"
+                      hidden
+                    >
+                      Discord 전송 예약
+                    </button>
+                  </div>
+                  <p class="quality-note">
+                    미리보기는 실제 캐시 데이터로 생성·저장되며 Discord로 보내지
+                    않습니다. Yahoo 데이터 지연·누락 시 일부 내용이 비거나 지연
+                    표시될 수 있습니다.
+                  </p>
+                </section>
+              </div>
+              <section class="panel briefing-history" aria-label="전송 이력">
+                <div class="records-header">
+                  <div>
+                    <span class="eyebrow">DELIVERY HISTORY</span>
+                    <h2>전송 이력</h2>
+                  </div>
+                  <div class="actions">
+                    <button
+                      id="briefing-history-reload"
+                      type="button"
+                      class="button secondary"
+                    >
+                      다시 불러오기
+                    </button>
+                  </div>
+                </div>
+                <p
+                  id="briefing-history-status"
+                  class="status"
+                  role="status"
+                ></p>
+                <div id="briefing-history-list" class="briefing-list"></div>
+                <div class="table-footer">
+                  <span class="muted">최신순 · 20개씩</span>
+                  <button
+                    id="briefing-history-more"
+                    type="button"
+                    class="button subtle"
+                    hidden
+                  >
+                    이력 더 불러오기 ↓
+                  </button>
+                </div>
+              </section>
+              <div
+                id="briefing-detail"
+                class="panel briefing-detail"
+                hidden
+              ></div>
             </section>
           </div>
           <footer class="page-footer">

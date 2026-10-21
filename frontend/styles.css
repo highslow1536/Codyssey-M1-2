@@ -1789,3 +1789,135 @@ dialog > p {
     margin-left: auto;
   }
 }
+.briefings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.briefing-panel {
+  padding: 23px 24px;
+  min-width: 0;
+}
+.briefing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0 20px;
+}
+.briefing-schedule,
+.briefing-history-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #fafbf8;
+}
+.briefing-schedule-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.briefing-actions {
+  margin-top: 10px;
+}
+.briefing-form {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.briefing-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.check-list {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0;
+}
+.check-list legend {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 6px;
+}
+.check-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.check-item input {
+  width: auto;
+  margin: 0;
+}
+.briefing-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.8;
+  background: #fafbf8;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 10px;
+}
+.briefing-sources {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 11px;
+}
+.briefing-sources a {
+  color: #48613e;
+  font-weight: 600;
+}
+.briefing-warnings {
+  font-size: 11px;
+  color: #96605a;
+  background: #faf3f1;
+  border: 1px solid #ead9d5;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 10px;
+}
+.briefing-history {
+  padding: 23px 24px 0;
+}
+.briefing-history-text {
+  font-size: 12px;
+  color: #697360;
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+.briefing-parts {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 11px;
+}
+.briefing-parts li {
+  padding: 2px 0;
+}
+.briefing-detail {
+  padding: 23px 24px;
+  margin-top: 16px;
+}
+@media (max-width: 960px) {
+  .briefings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .briefing-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
