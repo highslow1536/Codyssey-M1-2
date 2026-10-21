@@ -131,6 +131,9 @@ class ConversationRepository:
             "sequence": int(data.get("sequence", 0) or 0),
             "created_at": _iso(data.get("created_at")),
             "turn_id": data.get("turn_id"),
+            "sources": data.get("sources") or [],
+            "tool_trace": data.get("tool_trace") or [],
+            "data_as_of": data.get("data_as_of", ""),
         }
 
     def _parent_ref(self, conversation_id: str) -> Any:
@@ -600,6 +603,8 @@ class ConversationRepository:
                     "sequence": assistant_sequence,
                     "turn_id": turn_snap.id,
                     "sources": sources,
+                    "tool_trace": tool_trace,
+                    "data_as_of": data_as_of,
                     "tool_trace_summary": "; ".join(trace_bits)[:1000],
                 },
             )

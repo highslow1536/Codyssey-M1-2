@@ -23,3 +23,15 @@ services:
         sync: false
       - key: OPENAI_MODEL
         sync: false
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: NEWS_CACHE_MINUTES
+        value: "30"
+      - key: SENTIMENT_CACHE_MINUTES
+        value: "30"
+      - key: ANALYSIS_CACHE_MINUTES
+        value: "30"

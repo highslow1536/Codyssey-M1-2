@@ -12,9 +12,59 @@ def bar_id(bar):
     ).hexdigest()
 
 
+def bar_fingerprint(bar):
+    return hashlib.sha256(
+        json.dumps(
+            {
+                k: bar.get(k)
+                for k in (
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "adjusted_close",
+                    "volume",
+                    "dividends",
+                    "stock_splits",
+                    "currency",
+                    "event_time",
+                )
+            },
+            sort_keys=True,
+            default=str,
+        ).encode()
+    ).hexdigest()
+
+
 class MarketRepository:
     def __init__(self, db):
         self.db = db
+
+    def save_original_bars(self, instrument, bars):
+        """Research refresh writes public originals only; it never changes user data."""
+        self.db.collection("instruments").document(instrument["id"]).set(instrument)
+        for offset in range(0, len(bars), 100):
+            pairs = [
+                (bar, self.db.collection("market_bars").document(bar_id(bar)))
+                for bar in bars[offset : offset + 100]
+            ]
+
+            @firestore.transactional
+            def write(transaction):
+                snapshots = [
+                    (bar, ref, ref.get(transaction=transaction).to_dict() or {})
+                    for bar, ref in pairs
+                ]
+                for bar, ref, previous in snapshots:
+                    fingerprint = bar_fingerprint(bar)
+                    revision = previous.get("revision", 0) + int(
+                        previous.get("source_fingerprint") != fingerprint
+                    )
+                    transaction.set(
+                        ref, {**bar, "revision": revision, "source_fingerprint": fingerprint}
+                    )
+
+            write(self.db.transaction())
 
     def save_bars(self, uid: str, instrument: dict, bars: list[dict]) -> dict:
         self.db.collection("instruments").document(instrument["id"]).set(instrument)
@@ -56,27 +106,7 @@ class MarketRepository:
                 result = dict.fromkeys(counts, 0)
                 now = datetime.now(timezone.utc)
                 for bar, market_ref, data_ref, previous_market, previous_data in snapshots:
-                    fingerprint = hashlib.sha256(
-                        json.dumps(
-                            {
-                                k: bar.get(k)
-                                for k in (
-                                    "open",
-                                    "high",
-                                    "low",
-                                    "close",
-                                    "adjusted_close",
-                                    "volume",
-                                    "dividends",
-                                    "stock_splits",
-                                    "currency",
-                                    "event_time",
-                                )
-                            },
-                            sort_keys=True,
-                            default=str,
-                        ).encode()
-                    ).hexdigest()
+                    fingerprint = bar_fingerprint(bar)
                     old_market = previous_market.to_dict() or {}
                     changed = old_market.get("source_fingerprint") != fingerprint
                     revision = old_market.get("revision", 0) + int(changed)

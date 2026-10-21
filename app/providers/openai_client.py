@@ -24,12 +24,40 @@ UNTRUSTED_DATA_GUARD = (
 
 BASE_INSTRUCTIONS = (
     "You are a market assistant for Korean and US stocks. Explain with the "
-    "server-provided summary and tool results only. Do not invent prices, "
+    "server-provided summary and tool results only. The research block includes original Yahoo "
+    "technical indicators, US-only CNN/VIX and provider news. Keep editable user data and original "
+    "market data distinct. Check quality_status and per-source observation times; never call "
+    "stale or unavailable data current. Missing news is not evidence of no market events. "
+    "For a request about recent news or sentiment, use the matching read tool to check its cache "
+    "and collect if due. Cite the actual source URLs in prose. Do not invent prices, "
     "dates, or sources. When a limit is reached, answer with what is known "
     "and state what could not be verified. Answer in Korean."
 )
 
 _TOOL_RESULT_CHARS = 8000
+
+
+def bounded_json(value, limit):
+    """Keep model inputs valid JSON, including when a provider returns long text."""
+    rendered = json.dumps(value, ensure_ascii=False, default=str)
+    if len(rendered) <= limit:
+        return rendered
+
+    def compact(item, text_limit, list_limit, key=""):
+        if isinstance(item, dict):
+            return {k: compact(v, text_limit, list_limit, k) for k, v in item.items()}
+        if isinstance(item, list):
+            return [compact(v, text_limit, list_limit, key) for v in item[:list_limit]]
+        if isinstance(item, str) and key not in {"url", "source_url", "source_urls"}:
+            return item if len(item) <= text_limit else item[:text_limit] + "…[truncated]"
+        return item
+
+    for text_limit, list_limit in ((600, 5), (250, 3), (100, 1)):
+        reduced = {"data": compact(value, text_limit, list_limit), "truncated": True}
+        rendered = json.dumps(reduced, ensure_ascii=False, default=str)
+        if len(rendered) <= limit:
+            return rendered
+    return json.dumps({"error": "result_too_large", "truncated": True})
 
 
 def ensure_model_configured(settings: Any) -> None:
@@ -81,6 +109,31 @@ def _function_calls(response: Any) -> list[tuple[str | None, str, str]]:
     return calls
 
 
+def research_sources(result):
+    if not isinstance(result, dict):
+        return []
+    sources = [
+        {"url": url, "title": "Yahoo Finance", "provider": "yahoo"}
+        for url in result.get("source_urls", [])
+    ]
+    if result.get("source_url") and result.get("value") is not None:
+        sources.append(
+            {"url": result["source_url"], "title": "CNN Fear & Greed", "provider": "cnn"}
+        )
+    sources.extend(
+        {
+            "url": item["source_url"],
+            "title": item["title"],
+            "provider": item.get("provider", "news"),
+        }
+        for item in result.get("items", [])
+        if item.get("source_url")
+    )
+    for key in ("cnn", "vix"):
+        sources.extend(research_sources(result.get(key)))
+    return sources
+
+
 def generate_reply(
     *,
     settings: Any,
@@ -103,7 +156,7 @@ def generate_reply(
             raise AppError(503, "model_unavailable", "OpenAI SDK를 사용할 수 없습니다.") from exc
         client = OpenAI(api_key=settings.openai_api_key, timeout=60.0, max_retries=0)
 
-    from app.tools.registry import summarize_dataset_tool_definition
+    from app.tools.registry import tool_definitions
 
     model_input: list[Any] = [
         {"role": entry["role"], "content": entry["content"]}
@@ -111,11 +164,12 @@ def generate_reply(
         if entry.get("role") in ("user", "assistant") and entry.get("content")
     ]
     model_input.append({"role": "user", "content": user_message})
-    tools = [summarize_dataset_tool_definition()]
+    tools = tool_definitions()
 
     tool_trace: list[dict[str, Any]] = []
     calls_made = 0
     last_text = ""
+    collected_sources = []
     # Reserve the final request for a textual answer after tool results.
     # OPENAI_MAX_OUTPUT_TOKENS is a total output budget across model requests.
     remaining_tokens = max_tokens
@@ -193,6 +247,7 @@ def generate_reply(
                 continue
             try:
                 result = call_tool(str(name), args)
+                collected_sources.extend(research_sources(result))
                 ok = True
                 summary = "ok"
             except AppError as exc:
@@ -208,13 +263,11 @@ def generate_reply(
                 {
                     "type": "function_call_output",
                     "call_id": call_id,
-                    "output": json.dumps(result, ensure_ascii=False, default=str)[
-                        :_TOOL_RESULT_CHARS
-                    ],
+                    "output": bounded_json(result, _TOOL_RESULT_CHARS),
                 }
             )
         model_input = list(model_input) + list(_field(response, "output") or []) + outputs
 
     if not last_text.strip():
         raise AppError(502, "model_error", "모델이 빈 답변을 반환했습니다.")
-    return {"text": last_text, "tool_trace": tool_trace}
+    return {"text": last_text, "tool_trace": tool_trace, "sources": collected_sources}

@@ -20,7 +20,6 @@ Flow per request:
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import Any, Callable
 
@@ -30,7 +29,7 @@ from app.schemas.conversation import ChatRequest, ChatResponse
 
 HISTORY_MESSAGE_LIMIT = 20
 HISTORY_CONTENT_CHARS = 2000
-SUMMARY_CONTEXT_CHARS = 6000
+SUMMARY_CONTEXT_CHARS = 14000
 NEW_TITLE_CHARS = 40
 
 
@@ -43,13 +42,9 @@ def default_title_for(message: str) -> str:
 
 
 def summary_context_text(summary: dict[str, Any]) -> str:
-    try:
-        rendered = json.dumps(summary, ensure_ascii=False, default=str)
-    except (TypeError, ValueError):
-        rendered = str(summary)
-    if len(rendered) > SUMMARY_CONTEXT_CHARS:
-        return rendered[:SUMMARY_CONTEXT_CHARS] + "...(truncated)"
-    return rendered
+    from app.providers.openai_client import bounded_json
+
+    return bounded_json(summary, SUMMARY_CONTEXT_CHARS)
 
 
 def sources_from_summary(summary: dict[str, Any]) -> list[dict[str, Any]]:
@@ -87,8 +82,11 @@ def data_as_of_from_summary(summary: dict[str, Any]) -> str:
 
 def default_summary_fn(db: Any, owner_uid: str, instrument_id: str) -> dict[str, Any]:
     from app.services.data import DataService
+    from app.services.research import ResearchService
 
-    return DataService(db).summary(owner_uid, instrument_id)
+    summary = DataService(db).summary(owner_uid, instrument_id)
+    research, sources = ResearchService(db).chat_context(instrument_id)
+    return {**summary, "research": research, "sources": sources}
 
 
 def default_model_caller(db: Any, owner_uid: str) -> Callable[..., dict[str, Any]]:
@@ -245,6 +243,8 @@ def handle_chat(
         raise AppError(502, "model_error", "모델이 빈 답변을 반환했습니다.")
     tool_trace = (result or {}).get("tool_trace") or []
     sources = sources_from_summary(summary)
+    sources.extend((result or {}).get("sources") or [])
+    sources = list({item["url"]: item for item in sources if item.get("url")}.values())[:30]
     data_as_of = data_as_of_from_summary(summary)
 
     repo.complete_turn(

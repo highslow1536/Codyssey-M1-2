@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     data_poll_minutes: int = Field(default=5, ge=1)
     news_cache_minutes: int = Field(default=30, ge=1)
     sentiment_cache_minutes: int = Field(default=30, ge=1)
+    analysis_cache_minutes: int = Field(default=30, ge=1)
 
     @field_validator(
         "firebase_project_id",

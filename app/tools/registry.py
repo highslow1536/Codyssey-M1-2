@@ -1,6 +1,6 @@
 """Allowlisted chat tool registry.
 
-Only summarize_dataset is exposed to the model. Arguments are strictly
+Dataset summaries and bounded research reads are exposed. Arguments are strictly
 validated with Pydantic (extra fields forbidden); there is deliberately no
 owner-UID field. The owner is always injected server-side.
 """
@@ -8,11 +8,11 @@ owner-UID field. The owner is always injected server-side.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-ALLOWED_TOOL_NAMES = ("summarize_dataset",)
+ALLOWED_TOOL_NAMES = ("summarize_dataset", "search_news", "get_us_sentiment", "get_market_analysis")
 
 _SUMMARY_TOOL_DESCRIPTION = (
     "Return the server-side summary of the user's stored dataset for one "
@@ -34,6 +34,64 @@ class SummarizeDatasetArgs(BaseModel):
         if not cleaned:
             raise ValueError("instrument_id must not be blank")
         return cleaned
+
+
+class AnalysisArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    instrument_id: str = Field(min_length=1, max_length=64, pattern="^[A-Za-z0-9_.-]+$")
+
+
+class NewsArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    market: Literal["KR", "US"]
+    instrument_id: str | None = Field(default=None, max_length=64)
+    window: Literal["24h", "7d"] = "24h"
+
+
+class SentimentArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+def tool_definitions():
+    def define(name, description, properties):
+        return {
+            "type": "function",
+            "name": name,
+            "description": description,
+            "strict": True,
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": list(properties),
+                "additionalProperties": False,
+            },
+        }
+
+    return [
+        summarize_dataset_tool_definition(),
+        define(
+            "search_news",
+            "Read recent real Naver/Finnhub news and a cited digest. Collect only if cache is due. Empty or unavailable results do not mean no market events.",
+            {
+                "market": {"type": "string", "enum": ["KR", "US"]},
+                "instrument_id": {
+                    "type": ["string", "null"],
+                    "description": "Catalog ID or null for market-wide news",
+                },
+                "window": {"type": "string", "enum": ["24h", "7d"]},
+            },
+        ),
+        define(
+            "get_us_sentiment",
+            "Read CNN US stock Fear & Greed and VIX. Preserve stale/unavailable status and observation times. This is not a Korean or crypto index.",
+            {},
+        ),
+        define(
+            "get_market_analysis",
+            "Read original Yahoo adjusted-close returns, annualized realized volatility, Wilder RSI, moving averages and volume ratio; separate from editable user data.",
+            {"instrument_id": {"type": "string"}},
+        ),
+    ]
 
 
 def _owner_like_keys(raw: dict[str, Any]) -> list[str]:
@@ -74,7 +132,7 @@ def summarize_dataset_tool_definition() -> dict[str, Any]:
     }
 
 
-def validate_tool_args(name: str, raw_args: dict[str, Any]) -> SummarizeDatasetArgs:
+def validate_tool_args(name: str, raw_args: dict[str, Any]) -> BaseModel:
     """Validate raw tool args; raises AppError on any violation."""
     from app.errors import AppError
 
@@ -90,7 +148,13 @@ def validate_tool_args(name: str, raw_args: dict[str, Any]) -> SummarizeDatasetA
             "소유자 식별자를 도구에 전달할 수 없습니다: " + ", ".join(rejected),
         )
     try:
-        return SummarizeDatasetArgs.model_validate(raw_args)
+        model = {
+            "summarize_dataset": SummarizeDatasetArgs,
+            "search_news": NewsArgs,
+            "get_us_sentiment": SentimentArgs,
+            "get_market_analysis": AnalysisArgs,
+        }[name]
+        return model.model_validate(raw_args)
     except Exception as exc:
         raise AppError(422, "tool_args_invalid", "도구 인수가 올바르지 않습니다: " + str(exc))
 
@@ -102,6 +166,25 @@ def execute_tool(
     from app.errors import AppError
 
     args = validate_tool_args(name, arguments)
+    if name != "summarize_dataset":
+        from app.services.research import ResearchService
+
+        service = ResearchService(db)
+        if name == "search_news":
+            result = service.news(args.market, args.instrument_id, args.window)
+            return {
+                **result,
+                "items": result["items"][:5],
+                "returned_articles": min(5, len(result["items"])),
+                "total_collected_articles": len(result["items"]),
+            }
+        if name == "get_market_analysis":
+            return service.analysis(args.instrument_id)
+        result = service.sentiment()
+        return {
+            "cnn": {key: value for key, value in result["cnn"].items() if key != "history"},
+            "vix": result["vix"],
+        }
     try:
         from app.services.data import DataService
     except ImportError as exc:

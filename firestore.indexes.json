@@ -74,6 +74,26 @@
       "collectionGroup": "turns",
       "fieldPath": "response",
       "indexes": []
+    },
+    {
+      "collectionGroup": "research_cache",
+      "fieldPath": "payload",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "news_articles",
+      "fieldPath": "summary",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "news_articles",
+      "fieldPath": "title",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "sentiment",
+      "fieldPath": "history",
+      "indexes": []
     }
   ]
 }

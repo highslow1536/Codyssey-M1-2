@@ -94,6 +94,18 @@ class ConversationListOut(BaseModel):
     next_cursor: str | None = None
 
 
+class ToolTraceItem(BaseModel):
+    tool: str
+    ok: bool = True
+    summary: str = ""
+
+
+class SourceItem(BaseModel):
+    title: str = ""
+    url: str = ""
+    provider: str = ""
+
+
 class ChatMessageOut(BaseModel):
     id: str = ""
     role: RoleLiteral
@@ -101,6 +113,9 @@ class ChatMessageOut(BaseModel):
     sequence: int = 0
     created_at: str = ""
     turn_id: str | None = None
+    sources: list[SourceItem] = Field(default_factory=list)
+    tool_trace: list[ToolTraceItem] = Field(default_factory=list)
+    data_as_of: str = ""
 
 
 class ConversationDetail(BaseModel):
@@ -112,18 +127,6 @@ class ConversationDetail(BaseModel):
     revision: int = 1
     messages: list[ChatMessageOut] = Field(default_factory=list)
     next_cursor: str | None = None
-
-
-class ToolTraceItem(BaseModel):
-    tool: str
-    ok: bool = True
-    summary: str = ""
-
-
-class SourceItem(BaseModel):
-    title: str = ""
-    url: str = ""
-    provider: str = ""
 
 
 class ChatResponse(BaseModel):
