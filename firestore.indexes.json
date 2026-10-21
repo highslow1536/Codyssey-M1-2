@@ -125,6 +125,52 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "alert_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "owner_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "generated_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "alert_outbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "owner_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "available_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "price_quotes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "instrument_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "event_time",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -200,6 +246,46 @@
     },
     {
       "collectionGroup": "briefing_schedules",
+      "fieldPath": "_fingerprint",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alert_events",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alert_events",
+      "fieldPath": "description",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alert_events",
+      "fieldPath": "parts",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alert_events",
+      "fieldPath": "evidence",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alert_events",
+      "fieldPath": "_send_keys",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alerts",
+      "fieldPath": "steps",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alerts",
+      "fieldPath": "state",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "alerts",
       "fieldPath": "_fingerprint",
       "indexes": []
     }

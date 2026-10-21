@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from google.api_core.exceptions import GoogleAPICallError
 
-from app.api import briefings, chat, conversations, data, jobs, market, research
+from app.api import alerts, briefings, chat, conversations, data, jobs, market, research
 from app.config import get_settings
 from app.errors import AppError
 
@@ -87,6 +87,7 @@ def create_app() -> FastAPI:
     application.include_router(jobs.router)
     application.include_router(research.router)
     application.include_router(briefings.router)
+    application.include_router(alerts.router)
     return application
 
 

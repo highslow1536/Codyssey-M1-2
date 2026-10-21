@@ -7,6 +7,7 @@ import time
 from app.config import get_settings
 from app.errors import AppError
 from app.firebase import get_firestore
+from app.services.alerts import AlertService
 from app.services.briefings import BriefingService
 
 
@@ -21,15 +22,19 @@ def main():
     uid = settings.job_owner_uid
     if not uid or uid not in settings.allowed_uids:
         raise AppError(503, "configuration_missing", "허용 목록에 있는 JOB_OWNER_UID가 필요합니다.")
-    service = BriefingService(get_firestore(), settings)
+    db = get_firestore()
+    services = {"briefings": BriefingService(db, settings), "alerts": AlertService(db, settings)}
     while True:
-        try:
-            print(json.dumps(service.tick(uid)), flush=True)
-        except Exception:
-            # Deliberately omit arbitrary upstream exception text and credentials.
-            print(json.dumps({"error": "briefing_tick_failed"}), flush=True)
-            if not args.loop:
-                raise SystemExit(1) from None
+        failed = False
+        for name, service in services.items():
+            try:
+                print(json.dumps({name: service.tick(uid)}), flush=True)
+            except Exception:
+                # Omit arbitrary upstream text; one job cannot suppress the other.
+                print(json.dumps({"error": name + "_tick_failed"}), flush=True)
+                failed = True
+        if failed and not args.loop:
+            raise SystemExit(1)
         if not args.loop:
             return
         time.sleep(args.interval)
