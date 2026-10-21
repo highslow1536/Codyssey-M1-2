@@ -2,7 +2,7 @@
 
 실제 주가와 뉴스를 바탕으로 시장·관심 종목을 설명하고, Discord 브리핑과 조건부 가격 알림을 제공한다. 같은 수집·계산·조회 기능을 웹 채팅과 외부 MCP 클라이언트에서 사용한다.
 
-이 문서는 전체 기능의 구현 기준이다. 현재 백엔드·실제 일봉 수집·Firestore·과제 필수 API·바닐라 화면·뉴스·시장 심리·기술 지표·채팅 도구를 구현했다. Discord·가격 알림·외부 MCP·배포는 이후 단계이며, 구체적인 구현 상태와 실행법은 [README](../README.md), 검증 결과는 [검증 기록](verification.md)을 따른다. 기준일은 2026년 10월 22일이다. 현재 뉴스 저장 상한(최신 50건), 수집 임대·캐시·실패 재시도, 지표 계산식과 실제 API 인수는 README의 구현 계약을 따른다. 예약 worker는 아직 연결하지 않았으며 브리핑 조회 시 만료된 항목을 수집한다.
+이 문서는 전체 기능의 구현 기준이다. 현재 과제 필수 API·실제 일봉·웹 화면·뉴스·시장 심리·기술 지표·채팅 도구·Discord 정기 브리핑·조건부 가격 알림을 구현했다. 외부 MCP·배포는 이후 단계다. 실제 API·DB 계약과 실행법은 [README](../README.md), 검증 범위는 [검증 기록](verification.md)을 따른다. 아래 전체 설계의 미래 기능과 현재 구현은 README를 기준으로 구분한다. 기준일은 2026년 10월 22일이다.
 
 ## 1 범위와 완료 기준
 
@@ -267,7 +267,8 @@ Firestore는 컬렉션과 문서로 구성한다. 가격 이력·대화 메시�
 | --- | --- | --- |
 | `instruments/{id}` | 거래소와 종목/지수 코드 | 이름, 시장, 통화, 시간대, 공급원 코드, 거래소 일정 코드, 지연 설정 |
 | `market_bars/{id}` | 종목+resolution+event_time의 해시 | instrument_id, resolution, session_date, open/high/low/close, adjusted_close, volume, event_time, fetched_at, provider, source_url, revision |
-| `quotes/{instrument_id}` | 종목 ID | price_decimal, event_time, fetched_at, resolution, delay_seconds, session, quality_status |
+| `price_streams/{instrument_id}` | 종목 ID | next_poll_at, lease_token, lease_until, latest_event_time, latest_quote, fetched_at, last_error |
+| `price_quotes/{id}` | 종목+관측 시각의 SHA-256 | price_decimal, bar_start, event_time, fetched_at, resolution, currency, delay_seconds, session, quality, source_url |
 | `data/{id}` | 사용자+원본 관측 ID의 해시; 수동 입력은 UUID | owner_uid, instrument_id, date, value, memo, source_bar_id, source_revision, source, user_modified, revision, created_at, updated_at |
 | `news_articles/{id}` | 정규화한 원문 URL의 해시 | provider_ids, market, instrument_ids, title, summary, source, source_url, published_at, fetched_at |
 | `research_cache/{key_hash}` | 공급원·대상·기간 키의 SHA-256 | payload, fetched_at, expires_at, last_attempt_at, next_attempt_at, lease_until, attempt_token, error |
@@ -276,10 +277,12 @@ Firestore는 컬렉션과 문서로 구성한다. 가격 이력·대화 메시�
 | `conversations/{id}` | UUID 또는 chat 요청에서 결정한 ID | owner_uid, title, created_at, updated_at, last_message_preview, message_count, active_turn_id, revision, deleting |
 | `conversations/{id}/messages/{id}` | turn ID+role | role, content, created_at, sequence, turn_id, sources, tool_trace, tool_trace_summary, data_as_of |
 | `conversations/{id}/turns/{request_id}` | client_request_id | status, lease_until, context_reference, error_code, started_at, completed_at |
-| `alerts/{id}` | UUID | owner_uid, instrument_id, rule, stage, last_event_time, last_price_decimal, armed_at, trigger_event_id, cycle, active, expires_at, revision |
+| `alerts/{id}` | 소유자+생성 요청 키의 SHA-256 | owner_uid, instrument_id, currency, steps, state(stage/cycle/last_event_time/last_price_decimal/armed_at/evidence), active, expires_at, revision, monitor_status |
 | `briefing_schedules/{id}` | UUID | owner_uid, market, instrument_ids, schedule_kind, timezone, local_time/close_offset_minutes, next_run_at, active, destination_alias |
 | `briefings/{id}` | schedule ID+대상 slot; 수동은 UUID | owner_uid, market, text, snapshot, sources, generated_at, data_as_of, schedule_id, slot, delivery_status |
-| `outbox/{event_id}` | 알림 규칙+cycle, 예약+slot 또는 수동 브리핑 ID에 분할 번호 결합 | owner_uid, kind, payload, destination_alias, status, attempts, available_at, lease_owner, lease_until, message_id, last_error |
+| `outbox/{event_id}` | 브리핑 ID | owner_uid, status, available_at, lease_token, lease_until; 부분별 결과는 briefings.parts |
+| `alert_events/{event_id}` | 규칙+초기화 세대+cycle+관측 시각의 SHA-256 | owner_uid, alert_id, instrument_id, event_time, generated_at, price_decimal, evidence, gap, text, parts, delivery_status |
+| `alert_outbox/{event_id}` | 알림 발생 ID | owner_uid, status, available_at, lease_token, lease_until; 부분별 결과는 alert_events.parts |
 | `job_runs/{run_id}` | 작업 종류+대상+시간 slot | kind, owner_uid, target_id, slot, status, lease_owner, lease_until, started_at, completed_at, error_code, source_counts |
 
 `market_bars`는 공급원에서 수집한 기준 데이터다. `data`는 그 실제 관측값을 복사한 사용자의 과제 분석 데이터다. 이 구분으로 사용자는 `(date, value, memo)`를 수정·삭제하면서도 원본 시세를 보존할 수 있다. 기술 분석·가격 알림·시장 브리핑은 기준 데이터를 사용하고, `/api/data/summary`는 사용자의 현재 분석 데이터를 요약한다. 채팅에는 어느 데이터의 요약인지 명시한다.
@@ -314,9 +317,11 @@ Firestore는 컬렉션과 문서로 구성한다. 가격 이력·대화 메시�
 
 ## 7 조건부 가격 알림
 
+현재 구현은 구조화 단계 편집·미리보기와 원자적 상태 전환·Discord 전송을 제공한다. 자연어 초안 해석은 이후 확장이다. 실제 컬렉션은 `alerts`, `price_streams`, `price_quotes`, `alert_events`, `alert_outbox`이며, 필드·API·복구 범위는 README의 구현 계약을 따른다.
+
 ### 규칙 표현
 
-조건은 허용된 연산자로만 표현한다. `eval`이나 임의 Python/SQL 실행을 허용하지 않는다. UI는 단계별 조건 편집과 자연어 초안을 모두 지원하되 저장 전 같은 구조화 규칙을 보여준다.
+조건은 허용된 연산자로만 표현한다. `eval`이나 임의 Python/SQL 실행을 허용하지 않는다. UI는 단계별 조건 편집과 저장 전 구조화 규칙 미리보기를 제공한다. 자연어 초안 해석은 이후 확장으로 남긴다.
 
 ```json
 {
@@ -386,7 +391,7 @@ DB 상태와 outbox 생성은 중복을 막을 수 있지만 Discord 수신까�
 | HTTP API·Swagger | Render Web Service | FastAPI, 요청 처리 |
 | DB | Firebase Firestore | 실제 데이터·사용자 설정·작업 상태 저장 |
 | 최초 수집 | 로컬 CLI | 지정 종목의 실제 데이터 수집·건수 검증 |
-| 개발 중 예약 실행 | 로컬 worker | 5분마다 tick, 프로그램이 켜진 동안 동작 |
+| 개발 중 예약 실행 | 로컬 worker | 기본 1분마다 tick, 종목 수집은 기본 5분; 프로그램이 켜진 동안 동작 |
 | 배포 후 예약 실행 | 선택한 Render Cron Job 1개 | 5분마다 `python -m jobs.tick`, 작업 후 종료 |
 | 외부 채팅의 MCP | 로컬 stdio 프로세스 | MCP 호스트가 실행하고 공통 서비스 호출 |
 

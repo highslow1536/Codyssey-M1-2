@@ -2,7 +2,7 @@
 
 Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약으로 답하는 AI 비서를 개발합니다. 전체 설계는 [프로젝트 설계서](docs/project-design.md)에 있습니다.
 
-현재 **과제 필수 API·바닐라 웹 UI·Naver/Finnhub 뉴스·CNN/VIX·기술 지표·Discord 정기 브리핑**을 구현했습니다. 가격 알림과 외부 MCP 서버는 다음 단계입니다.
+현재 **과제 필수 API·바닐라 웹 UI·Naver/Finnhub 뉴스·CNN/VIX·기술 지표·Discord 정기 브리핑·조건부 가격 알림**을 구현했습니다. 외부 MCP 서버는 다음 단계입니다.
 
 ## 구현 범위
 
@@ -14,7 +14,7 @@ Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약�
 - 서버 요약을 주입하는 OpenAI Responses 채팅, 자동 저장·재시도·동시 요청 제한, `summarize_dataset`·`search_news`·`get_us_sentiment`·`get_market_analysis` 도구.
 - 프레임워크 없는 HTML/CSS/JS 화면: 이메일·Google Firebase 로그인, 실제 Yahoo 수집, CRUD·기간 전체 요약·목록 차트, AI 채팅과 대화 기록 복원, 모바일 화면.
 
-시장 브리핑 화면에서 원본 지표·뉴스 요약·미국 시장 심리를 확인할 수 있습니다. 장중 수집·가격 알림은 아직 구현 전입니다. 일봉의 `event_time`은 거래소 세션 종료 시각이고 `fetched_at`은 공급원 수집 시각입니다. 데이터가 없거나 외부 호출이 실패하면 가짜 값으로 대체하지 않습니다.
+시장 브리핑 화면에서 원본 지표·뉴스 요약·미국 시장 심리를 확인할 수 있습니다. 가격 알림은 별도의 실제 정규장 5분 봉 종가를 사용합니다. 일봉의 `event_time`은 거래소 세션 종료 시각이고 `fetched_at`은 공급원 수집 시각입니다. 데이터가 없거나 외부 호출이 실패하면 가짜 값으로 대체하지 않습니다.
 
 ## 개발 환경
 
@@ -127,6 +127,52 @@ Firestore `briefing_schedules`는 설정·revision·다음 실행 시각, `brief
 Discord 메시지는 접두 ID·부분 번호를 포함해 보수적인 길이 제한으로 분할합니다. `wait=true`의 실제 메시지 ID를 받은 부분만 성공으로 저장하고 이미 성공한 부분은 재전송하지 않습니다. 멘션은 `allowed_mentions`로 차단합니다. 429는 공급원의 재시도 대기(최대 24시간)를 목적지 전체에 적용하고, 5xx·연결 오류는 지수 간격으로 최대 5회 시도합니다. 401·403·404 등 영구 오류는 자동 재시도하지 않습니다. 수동 재시도도 이미 성공한 부분을 보존합니다.
 
 Discord와 Firestore를 하나의 트랜잭션으로 묶을 수 없어, 응답 유실·전송 직후 프로세스 중단·임대 만료에서는 **중복 전송 가능성**이 있습니다. 이 경우 `uncertain` 이력과 같은 브리핑 ID로 표시합니다. 정확히 한 번 전송을 보장하지 않습니다. 워커 출력과 API에는 웹후크 주소·토큰·공급원 원문 오류를 기록하지 않습니다.
+
+## 조건부 가격 알림
+
+로그인 후 **가격 알림**에서 종목·단계별 조건을 입력하고 미리보기로 해석을 확인한 뒤 저장합니다. 단순 목표가, 상승·하락 돌파, 1~3단계 순차 조건, 단계 안의 AND(최대 3조건), 1회·반복, 만료와 단계 제한 시간(1~720시간)을 지원합니다. 통화는 종목 설정과 일치해야 하며 문턱값은 십진수 문자열입니다(KRW 정수, USD·지수 소수 2자리). 판정은 원본 가격과 `Decimal`로 비교합니다.
+
+```json
+{
+  "instrument_id": "KRX_005930",
+  "currency": "KRW",
+  "steps": [
+    {"op": "cross_above", "price": "35000"},
+    {"op": "lte", "price": "30000"}
+  ],
+  "session_scope": "regular",
+  "repeat_mode": "once",
+  "expires_at": null,
+  "step_timeout_hours": null,
+  "active": true,
+  "idempotency_key": "my-price-rule-1"
+}
+```
+
+이 규칙은 등록 이후 `35000 이하 → 35000 초과`를 관측하면 다음 단계로 진행하고, **더 나중 관측값**이 `30000 이하`이면 발생합니다. 최초 관측이 이미 35000을 넘는 경우 돌파로 인정하지 않습니다. 처음부터 초과한 상태도 인정하려면 `gt`를 선택합니다. `cross_below`는 이전 값이 문턱 이상이고 새 값이 문턱 미만이어야 합니다. `gte`·`lte`는 경계값을 포함합니다. 단순 목표가 조건은 첫 새 관측에서도 발생할 수 있습니다.
+
+`DISCORD_WEBHOOK_URL`·`JOB_OWNER_UID`·허용 UID를 설정하고 기존과 같은 `python -m jobs.tick --loop`를 실행합니다. worker는 브리핑 생성·전송과 가격 감시·전송을 각각 처리합니다. 서버나 웹 화면만 켜두면 예약 감시는 실행되지 않습니다. 기본 수집 간격은 `DATA_POLL_MINUTES=5`이며 정규장과 지연된 종가 수신 구간에만 수집합니다. 종목별 수집 임대는 여러 규칙·worker가 공유합니다.
+
+Yahoo `history(period="5d", interval="5m", auto_adjust=False, prepost=False, actions=True)`로 최근 5거래일 범위의 완료된 봉을 가져옵니다. [yfinance 공식 소스](https://github.com/ranaroussi/yfinance/blob/main/yfinance/scrapers/history.py)의 인수에 따라 배당 조정과 시간외 거래를 끄고, 실제 거래소 달력으로 휴장·조기 폐장·장중 휴식을 제외합니다. 공급원 심볼·시간대·통화를 확인하며 실제 봉 종료 시각을 관측 시각으로 보존합니다. 한국 안내 지연은 20분이며, 5분 봉 내부의 일시적인 돌파나 선후관계는 알 수 없습니다. 이 기능은 수집한 종가 시계열에서 조건을 확인한 알림입니다.
+
+최신 봉이 `안내 지연 + 5분 + 수집 간격 + 2분`보다 오래되면 새 판정을 중지하고 `stale`로 표시합니다. 신선한 최신 봉이 돌아오면 공급원 조회 범위 및 저장된 최근 8일 안에서 미처리 봉을 시각순으로 복구합니다. 등록·초기화·재개 이전 관측은 평가하지 않습니다. 중복·역순 관측을 무시하며, 세션 변경이나 5분 초과 공백을 가로질러 돌파를 추정하지 않습니다. 이미 충족한 앞 단계는 보존하고, 공백 이후 하단 조건 확인에는 그 사실을 메시지에 표시합니다. 장기간 중단으로 복구 범위를 벗어난 움직임은 확인할 수 없습니다.
+
+일시정지는 진행 단계를 보존합니다. 재개 시 돌파 기준값은 새로 잡습니다. 조건 변경에는 명시적 상태 초기화가 필요하며, 완료한 1회 규칙은 **초기화**로 다시 감시합니다. 초기화 전 발생 이력은 유지됩니다. 반복 규칙은 다음 주기로 이동하며 같은 관측값을 재사용하지 않습니다. 한 단계의 단순 목표가를 반복으로 설정하면 조건이 유지되는 동안 새 봉마다 발생할 수 있습니다. 다시 돌파할 때만 받으려면 돌파 연산자를 선택하세요. 분할·배당 등 기업행위 표시를 받은 경우 규칙을 일시정지하므로 가격 문턱을 확인한 뒤 수정·초기화하세요. 공급원이 기업행위를 누락하면 이를 자동 감지할 수 없습니다.
+
+규칙 상태 전환·고유 발생 이력·전송 대기열은 하나의 Firestore 트랜잭션으로 저장합니다. 규칙 삭제 후에도 발생·전송 이력은 남습니다. 실패한 전송은 화면에서 재시도할 수 있습니다. 브리핑과 같은 목적지의 429 대기, 최대 5회 지수 지연 재시도, 만료 임대 복구와 늦은 응답 차단을 공유합니다. Discord 응답 유실은 수신 중복을 만들 수 있어 메시지에 event ID, 이력에 불확실 여부와 메시지 ID를 남깁니다. 재시도는 조건을 다시 발생시키지 않습니다.
+
+| API | 역할 |
+| --- | --- |
+| `GET/POST /api/alerts` | 내 규칙 목록·생성(생성 요청 키 필수) |
+| `POST /api/alerts/preview` | 구조화 조건을 설명, 저장·감시 시작 없음 |
+| `PATCH /api/alerts/{id}` | 전체 규칙과 `expected_revision`, 조건 변경 시 `reset_state=true` |
+| `POST /api/alerts/{id}/reset` | `expected_revision`으로 상태 초기화·재개 |
+| `DELETE /api/alerts/{id}` | 감시 취소, 발생 이력 보존 |
+| `GET /api/alert-events` | 소유자별 이력, `limit`·`cursor` 페이지 조회 |
+| `GET /api/alert-events/{id}` | 조건 근거·전송 부분·실패·불확실 여부 |
+| `POST /api/alert-events/{id}/retry` | 실패한 부분만 재등록, `idempotency_key` 필수 |
+
+Firestore의 `alerts`는 규칙·진행 상태, `price_streams`는 종목별 수집 임대·최신 봉, `price_quotes`는 원본 관측값을 저장합니다. `alert_events`는 발생 내용·부분별 전송 결과, `alert_outbox`는 전송 임대와 다음 재시도 시각입니다. `delivery_destinations/default`의 Discord 대기는 브리핑과 공유합니다. 브라우저는 인증된 API를 통해서만 접근합니다. 필요한 복합 인덱스는 `firestore.indexes.json`에 포함했습니다.
 
 ## API 실행과 인증
 
@@ -284,13 +330,24 @@ node frontend/tests/research-browser.mjs
 node frontend/tests/briefings-browser.mjs
 ```
 
+가격 알림 브라우저 검사에는 실제 Yahoo 장중 데이터로 만든 에뮬레이터 이력이 필요합니다. 아래 도우미는 운영에서 사용하지 않으며, 등록 시각을 실제 과거 봉 직전으로 고정한 검증용 규칙을 사용합니다. 가격·관측 시각은 공급원 원본 그대로이고 Discord 전송은 실행하지 않습니다. 단위·통합 테스트가 전역 시세 캐시를 정리하므로 **Python 검사 후** 수집 도우미를 실행하세요.
+
+```bash
+APP_ENV=test FIREBASE_PROJECT_ID=demo-stock-assistant \
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 PYTHONPATH=. \
+python frontend/tests/collect_alerts.py
+node frontend/tests/alerts-browser.mjs
+```
+
+이 검사는 규칙 CRUD·순차 조건·AND·일시정지·재개·초기화·실제 관측 이력·새로고침·계정 분리·390px 화면을 확인합니다. 재시도 UI는 해당 로컬 이력의 **전송 상태만** 실패로 바꾸며, 응답 유실과 5xx에서는 같은 요청 키를 유지합니다. 브라우저로 worker를 실행하거나 실제 웹훅에 보내지 않습니다.
+
 ## 배포와 다음 단계
 
 `render.yaml`은 백엔드 배포 설정입니다. 아직 배포하지 않았습니다. Render의 환경변수에는 `.env.example` 중 서버 필수 항목을 입력하고, 에뮬레이터 변수는 설정하지 않습니다. `/healthz` 정상만으로 Firebase·OpenAI 연동 완료를 의미하지 않습니다. 실제 API 호출도 확인하세요.
 
 `vercel.json`은 프로젝트 루트에서 `node frontend/scripts/build.mjs`를 실행하고 `frontend/dist`를 배포하도록 구성했습니다. Vercel에는 `API_BASE_URL`과 `FIREBASE_WEB_CONFIG_JSON`만 넣습니다. 서버 키·서비스 계정·Discord 웹훅은 Render에만 저장합니다. 빌드는 공개 설정 세 항목과 Firebase 웹 구성의 허용된 필드만 출력하며 서비스 계정 입력은 거부합니다. Google 로그인에는 Vercel 도메인 승인도 필요합니다. 배포는 아직 수행하지 않았습니다.
 
-이후 구현 순서는 조건부 알림 → 외부 MCP 서버 → Vercel·Render 통합 배포입니다.
+이후 구현 순서는 외부 MCP 서버 → Vercel·Render 통합 배포입니다.
 
 | 제출 항목 | 상태 |
 | --- | --- |
@@ -300,4 +357,5 @@ node frontend/tests/briefings-browser.mjs
 | 바닐라 웹 UI·화면 증빙 | 구현, 로컬 데스크톱·모바일 검증 및 `artifacts/web-*.png` |
 | 뉴스·시장 심리·기술 지표 | 구현, Yahoo·CNN 실호출 및 로컬 저장 검증; Naver·Finnhub는 키 발급 후 실호출 필요 |
 | Discord 정기 브리핑 | 구현, 예약·큐·웹 이력 검증; 실제 웹훅 수신 확인은 설정 후 필요 |
-| 조건부 알림·MCP·배포 URL | 다음 단계 |
+| 조건부 가격 알림 | 구현, 실제 5분 봉 수집·원자적 상태·전송 worker·웹 관리 검증; 실제 Discord 수신은 설정 후 필요 |
+| 외부 MCP·배포 URL | 다음 단계 |
