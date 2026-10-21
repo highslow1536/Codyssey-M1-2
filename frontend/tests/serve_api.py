@@ -46,7 +46,11 @@ def main():
                 "emailVerified": True,
             },
         )
-        if response.status_code != 200 and "EXISTS" not in response.text:
+        duplicate = response.json().get("error", {}).get("message") in {
+            "EMAIL_EXISTS",
+            "DUPLICATE_LOCAL_ID",
+        }
+        if response.status_code != 200 and not duplicate:
             response.raise_for_status()
     root = Path(__file__).resolve().parents[2]
     fixture = json.loads((root / "tests/fixtures/yahoo_aapl_daily.json").read_text())

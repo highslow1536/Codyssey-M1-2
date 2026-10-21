@@ -27,6 +27,10 @@
             ><span aria-hidden="true">▤</span> 데이터 워크스페이스
             <span class="nav-arrow">↗</span></a
           >
+          <a class="nav-link" href="#research" data-view="research"
+            ><span aria-hidden="true">◈</span> 시장 브리핑
+            <span class="nav-arrow">↗</span></a
+          >
           <a class="nav-link" href="#chat" data-view="chat"
             ><span aria-hidden="true">✳</span> AI 리서치 대화
             <span class="nav-arrow">↗</span></a
@@ -280,7 +284,8 @@
                 </div>
                 <div class="context-strip">
                   <span class="context-dot"></span>선택 종목의 최근 1년 분석
-                  데이터 기반 · 데이터 화면의 날짜 필터와 별개입니다.
+                  데이터와 캐시된 원본 지표 · CNN · VIX · 뉴스 기반 · 각 출처의
+                  기준 시점을 확인하세요 · 데이터 화면의 날짜 필터와 별개입니다.
                 </div>
                 <div
                   id="messages"
@@ -316,6 +321,86 @@
                   함께 확인하세요.
                 </p>
               </div>
+            </section>
+            <section id="research-view" aria-label="시장 브리핑" hidden>
+              <form id="research-filter" class="filter-bar">
+                <label class="instrument-field"
+                  >지수 · 종목<select
+                    id="research-instrument"
+                    aria-label="브리핑 종목"
+                  ></select></label
+                ><label
+                  >기간<select id="research-window" aria-label="브리핑 기간">
+                    <option value="24h">최근 24시간</option>
+                    <option value="7d">최근 7일</option>
+                  </select></label
+                ><button
+                  class="button primary"
+                  id="research-refresh"
+                  type="submit"
+                >
+                  새로 확인
+                </button>
+              </form>
+              <p id="research-status" class="status" role="status"></p>
+              <div class="section-heading">
+                <h2>
+                  가격 분석
+                  <span id="research-instrument-name" class="muted"></span>
+                </h2>
+                <span id="research-asof" class="muted"></span>
+              </div>
+              <div
+                id="research-metrics"
+                class="metric-grid"
+                aria-live="polite"
+              ></div>
+              <p id="research-analysis-note" class="quality-note"></p>
+              <div class="research-grid">
+                <section
+                  class="panel research-panel"
+                  aria-label="미국 주식 심리"
+                >
+                  <div class="section-heading">
+                    <div>
+                      <span class="eyebrow">US MARKET SENTIMENT</span>
+                      <h2>미국 주식 심리</h2>
+                    </div>
+                    <span id="research-cnn-chip" class="chip"></span>
+                  </div>
+                  <div id="research-cnn"></div>
+                </section>
+                <section
+                  class="panel research-panel"
+                  aria-label="미국 기대 변동성"
+                >
+                  <div class="section-heading">
+                    <div>
+                      <span class="eyebrow">US EXPECTED VOLATILITY</span>
+                      <h2>미국 기대 변동성</h2>
+                    </div>
+                    <span id="research-vix-chip" class="chip"></span>
+                  </div>
+                  <div id="research-vix"></div>
+                </section>
+              </div>
+              <section class="panel research-news" aria-label="시장 뉴스">
+                <div class="records-header">
+                  <div>
+                    <span class="eyebrow">MARKET NEWS</span>
+                    <h2>
+                      시장 뉴스
+                      <span id="research-news-count" class="count">0</span>
+                    </h2>
+                  </div>
+                  <span id="research-news-chip" class="chip"></span>
+                </div>
+                <p id="research-news-summary-method" class="muted"></p>
+                <p id="research-news-summary" class="research-summary"></p>
+                <div id="research-news-highlights"></div>
+                <div id="research-news-items"></div>
+                <p id="research-news-note" class="quality-note"></p>
+              </section>
             </section>
           </div>
           <footer class="page-footer">

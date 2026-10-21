@@ -8,6 +8,7 @@ import {
 import { createApi } from "./api.js";
 import { initializeData } from "./data.js";
 import { initializeChat } from "./chat.js";
+import { initializeResearch } from "./research.js";
 import { $, el, localDate, status, errorMessage } from "./ui.js";
 
 let user = null,
@@ -36,36 +37,53 @@ const data = initializeData({
   },
 });
 const chat = initializeChat({ request });
+const research = initializeResearch({ request });
 const today = new Date(),
   start = new Date(today);
 start.setFullYear(start.getFullYear() - 1);
 $("start-date").value = localDate(start);
 $("end-date").value = localDate(today);
 function navigate() {
-  const isChat = location.hash === "#chat";
-  $("data-view").hidden = isChat;
+  const view = ["#chat", "#research"].includes(location.hash)
+    ? location.hash.slice(1)
+    : "data";
+  const isChat = view === "chat",
+    isResearch = view === "research";
+  $("data-view").hidden = view !== "data";
   $("chat-view").hidden = !isChat;
+  $("research-view").hidden = !isResearch;
   document.querySelectorAll("[data-view]").forEach((link) => {
-    const active = link.dataset.view === (isChat ? "chat" : "data");
+    const active = link.dataset.view === view;
     link.classList.toggle("active", active);
     if (active) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
-  $("breadcrumb").textContent = isChat
-    ? "AI 리서치 대화"
-    : "데이터 워크스페이스";
-  $("page-eyebrow").textContent = isChat
-    ? "AI RESEARCH CHAT"
-    : "DATA WORKSPACE";
+  $("breadcrumb").textContent = isResearch
+    ? "시장 브리핑"
+    : isChat
+      ? "AI 리서치 대화"
+      : "데이터 워크스페이스";
+  $("page-eyebrow").textContent = isResearch
+    ? "MARKET BRIEFING"
+    : isChat
+      ? "AI RESEARCH CHAT"
+      : "DATA WORKSPACE";
   $("page-title").replaceChildren(
     document.createTextNode(
-      isChat ? "시장을 이해하는 또 하나의 시선" : "숫자에서 시작하는 시장 읽기",
+      isResearch
+        ? "뉴스와 지표로 읽는 시장의 온도"
+        : isChat
+          ? "시장을 이해하는 또 하나의 시선"
+          : "숫자에서 시작하는 시장 읽기",
     ),
     el("span", "", "."),
   );
-  $("page-description").textContent = isChat
-    ? "분석 데이터를 바탕으로 질문하고, 이전 대화의 맥락을 이어가세요."
-    : "관심 지수와 종목의 데이터를 수집하고, 나의 분석 기록을 쌓아보세요.";
+  $("page-description").textContent = isResearch
+    ? "실제 뉴스, 미국 시장 심리, 원본 일봉으로 계산한 변동성을 함께 살펴보세요."
+    : isChat
+      ? "분석 데이터를 바탕으로 질문하고, 이전 대화의 맥락을 이어가세요."
+      : "관심 지수와 종목의 데이터를 수집하고, 나의 분석 기록을 쌓아보세요.";
+  if (isResearch && user && instruments.length) research.load();
 }
 window.addEventListener("hashchange", navigate);
 navigate();
@@ -79,6 +97,7 @@ async function onAuthChange(nextUser) {
   $("toast").hidden = true;
   data.reset();
   chat.reset();
+  research.reset();
   instruments = [];
   $("instrument").replaceChildren();
   $("chat-instrument").replaceChildren();
@@ -99,6 +118,7 @@ async function onAuthChange(nextUser) {
     const result = await request("/api/instruments");
     if (ownSession !== session) return;
     instruments = result.items;
+    research.setInstruments(instruments);
     for (const select of [$("instrument"), $("chat-instrument")]) {
       select.replaceChildren(
         ...instruments.map((item) => {
@@ -113,6 +133,8 @@ async function onAuthChange(nextUser) {
     }
     $("connection-label").textContent = "API 인증 완료";
     await Promise.all([data.load(), chat.loadList()]);
+    if (ownSession === session && location.hash === "#research")
+      research.load();
   } catch (error) {
     if (ownSession === session && error.name !== "AbortError") {
       status("data-status", errorMessage(error), true);

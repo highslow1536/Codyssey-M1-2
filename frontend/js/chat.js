@@ -108,7 +108,32 @@ export function initializeChat({ request }) {
         status("history-status", errorMessage(error), true);
     }
   }
-  function renderMessages(extra = null) {
+  function appendMetadata(last, extra) {
+    const sources = el("div", "message-sources");
+    for (const source of extra.sources || []) {
+      const url = safeLink(source.url);
+      if (!url) continue;
+      const link = el(
+        "a",
+        "",
+        `${source.title || source.provider || "출처"} ↗`,
+      );
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      sources.append(link);
+    }
+    if (sources.childNodes.length) last.append(sources);
+    const traces = (extra.tool_trace || [])
+      .map((t) => `${t.ok ? "✓" : "!"} ${t.tool}: ${t.summary}`)
+      .join("\n");
+    if (traces) last.append(el("div", "message-tools", traces));
+    if (extra.data_as_of)
+      last.append(
+        el("div", "message-tools", `데이터 기준 ${dateTime(extra.data_as_of)}`),
+      );
+  }
+  function renderMessages() {
     const nodes = messages.map((message) => {
       const item = el("article", `message ${message.role}`);
       item.append(
@@ -119,6 +144,7 @@ export function initializeChat({ request }) {
         ),
         el("div", "message-content", message.content),
       );
+      if (message.role === "assistant") appendMetadata(item, message);
       return item;
     });
     if (!nodes.length) {
@@ -149,36 +175,6 @@ export function initializeChat({ request }) {
       nodes.push(welcome);
     }
     $("messages").replaceChildren(...nodes);
-    if (extra && nodes.length) {
-      const last = nodes.at(-1),
-        sources = el("div", "message-sources");
-      for (const source of extra.sources || []) {
-        const url = safeLink(source.url);
-        if (!url) continue;
-        const link = el(
-          "a",
-          "",
-          `${source.title || source.provider || "출처"} ↗`,
-        );
-        link.href = url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        sources.append(link);
-      }
-      if (sources.childNodes.length) last.append(sources);
-      const traces = (extra.tool_trace || [])
-        .map((t) => `${t.ok ? "✓" : "!"} ${t.tool}: ${t.summary}`)
-        .join("\n");
-      if (traces) last.append(el("div", "message-tools", traces));
-      if (extra.data_as_of)
-        last.append(
-          el(
-            "div",
-            "message-tools",
-            `데이터 기준 ${dateTime(extra.data_as_of)}`,
-          ),
-        );
-    }
     $("messages").scrollTop = $("messages").scrollHeight;
   }
   function clearError() {
@@ -266,13 +262,19 @@ export function initializeChat({ request }) {
       });
       if (ownVersion !== version) return;
       currentId = response.conversation_id;
-      messages.push({ role: "assistant", content: response.message });
+      messages.push({
+        role: "assistant",
+        content: response.message,
+        sources: response.sources,
+        tool_trace: response.tool_trace,
+        data_as_of: response.data_as_of,
+      });
       clearError();
       $("chat-input").value = "";
       $("chat-title").textContent =
         conversations.find((c) => c.id === currentId)?.title ||
         payload.message.slice(0, 60);
-      renderMessages(response);
+      renderMessages();
       await loadList();
       if (ownVersion === version)
         $("chat-title").textContent =
