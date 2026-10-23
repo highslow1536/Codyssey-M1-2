@@ -47,6 +47,9 @@ class AlertRepository(OutboxRepository):
             reverse=True,
         )
 
+    def get_rule(self, uid, alert_id):
+        return visible(self._rule(uid, alert_id))
+
     @staticmethod
     def _expiry(values, now):
         if values.get("expires_at") and values["expires_at"] <= now:

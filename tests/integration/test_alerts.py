@@ -693,7 +693,15 @@ def test_tick_uses_earliest_watermark(firestore_db, owner_uid):
     assert len(repo.list_events(owner_uid)["items"]) == 1
 
 
-def test_api_expiry_json_currency_and_partial_patch(firestore_db, owner_uid, api_client):
+def test_api_expiry_json_currency_and_partial_patch(
+    firestore_db, owner_uid, api_client, monkeypatch
+):
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW.astimezone(tz) if tz else NOW.replace(tzinfo=None)
+
+    monkeypatch.setattr("app.api.alerts.datetime", FrozenDateTime)
     aware_iso = (NOW + timedelta(hours=2)).isoformat()
     body = {
         "instrument_id": INSTRUMENT,

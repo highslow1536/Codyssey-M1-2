@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic import Field, SecretStr, field_validator, model_validator
@@ -19,6 +20,7 @@ class Settings(BaseSettings):
     allowed_user_uids: str = ""
     job_owner_uid: str | None = None
     mcp_owner_uid: str | None = None
+    mcp_confirmation_timeout_seconds: int = Field(default=120, ge=30, le=300)
     openai_api_key: str | None = Field(default=None, repr=False)
     openai_model: str | None = None
     openai_max_output_tokens: int = Field(default=1200, ge=100, le=8000)
@@ -77,4 +79,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings(_env_file=os.getenv("STOCK_ASSISTANT_ENV_FILE", ".env"))

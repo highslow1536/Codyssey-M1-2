@@ -228,7 +228,7 @@ class ResearchService:
         result.setdefault("truncated", False)
         return result
 
-    def overview(self, instrument_id, window="24h", *, refresh=True):
+    def overview(self, instrument_id, window="24h", *, refresh=True, use_model=True):
         instrument = get_instrument(instrument_id)
         # Independent upstream calls must not serialize their timeouts.
         with ThreadPoolExecutor(max_workers=4) as pool:
@@ -240,7 +240,12 @@ class ResearchService:
                 else pool.submit(self.analysis, "INDEX_VIX", refresh=refresh)
             )
             news = pool.submit(
-                self.news, instrument["market"], instrument_id, window, refresh=refresh
+                self.news,
+                instrument["market"],
+                instrument_id,
+                window,
+                refresh=refresh,
+                use_model=use_model,
             )
             return {
                 "instrument": instrument,
