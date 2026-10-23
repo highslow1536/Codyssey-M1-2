@@ -4,13 +4,13 @@
 
 이번 배포는 사용자가 지정한 [GitHub 저장소](https://github.com/highslow1536/Codyssey-M1-2)와 새 Firebase 프로젝트를 사용한다. Discord 워커는 먼저 로컬에서 검증하며 유료 Render 워커는 생성하지 않는다.
 
-현재 `codyssey-m1-2-z6456f` 프로젝트·싱가포르(`asia-southeast1`)의 기본 Firestore Native DB·웹 앱을 생성했다. Firestore 규칙·인덱스를 배포했고 `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_CONFIG_JSON`은 로컬 `.env`에 저장했다. 이메일 로그인과 입력된 UID의 활성 상태를 실제 확인했다. Google 제공자는 아직 없고, 서버 자격 파일은 macOS 접근 권한 문제로 읽지 못했다. Vercel·Render CLI 인증과 Vercel 프로젝트 연결은 완료했다. 확보한 운영 도메인 `codyssey-m1-2-gold.vercel.app`도 Firebase에 승인했지만 앱은 아직 배포하지 않았다. 아래 생성 절차는 다른 환경을 새로 구성할 때도 사용할 수 있다.
+현재 `codyssey-m1-2-z6456f` 프로젝트·싱가포르(`asia-southeast1`)의 기본 Firestore Native DB·웹 앱을 생성했다. Firestore 규칙·인덱스와 Vercel 운영 도메인 승인을 마쳤다. 이메일 로그인과 입력된 UID의 활성 상태를 확인했고, 사용자가 `credentials/`에 복사한 서버 자격으로 실제 Auth 조회·Firestore 읽기도 성공했다. 사용자 선택에 따라 Google 제공자는 비활성 상태로 유지한다. Vercel·Render CLI 인증과 무료 Render API 생성도 완료했으며 웹·데이터 검증을 진행한다. 최신 배포 주소와 검증 범위는 [검증 기록](verification.md)의 마지막 절을 따른다. 아래 생성 절차는 다른 환경을 새로 구성할 때도 사용할 수 있다.
 
 ## 1. Firebase — 이 항목부터 준비
 
 1. [Firebase Console](https://console.firebase.google.com/)에서 과제용 프로젝트를 만들거나 사용할 기존 프로젝트를 선택한다. **프로젝트 ID**를 `.env`의 `FIREBASE_PROJECT_ID`에 입력한다. 표시 이름과 프로젝트 ID는 다르다.
 2. Firestore Database에서 Native mode의 `(default)` 데이터베이스를 만든다. 처음부터 프로덕션 모드로 만들고, 뒤이어 저장소의 규칙·인덱스를 배포한다. 리전은 이후 Render와 가까운 곳을 선택한다.
-3. Authentication → Sign-in method에서 이메일/비밀번호와 Google을 켠다. Google의 지원 이메일도 설정한다.
+3. Authentication → Sign-in method에서 이메일/비밀번호를 켠다. 이번 배포는 이메일 로그인만 사용하므로 Google 제공자는 비활성 상태로 유지한다.
 4. Authentication → Users에서 이메일 테스트 사용자를 만든다. 비밀번호는 본인이 보관하고 로그인 화면에 직접 입력한다. 사용자의 UID를 `ALLOWED_USER_UIDS`, `JOB_OWNER_UID`에 동일하게 입력한다. MCP도 쓸 경우 `MCP_OWNER_UID`에 같은 UID를 넣는다.
 5. 프로젝트 설정 → 일반 → 내 앱에서 **웹 앱**을 등록한다. Firebase Hosting은 이 구성에 필요하지 않다. 제공되는 웹 config 객체를 아래처럼 **유효한 JSON 한 줄**로 바꿔 `FIREBASE_WEB_CONFIG_JSON`에 입력한다. `authDomain`은 기본값을 유지한다.
 
@@ -78,7 +78,7 @@ Yahoo 시세와 CNN 공포탐욕지수에는 별도 키가 없다. CNN은 공개
 
 1. 키 없이 Yahoo 한국·미국 일봉, VIX, CNN 피드 연결을 확인한다.
 2. Firebase가 준비되면 규칙·인덱스 배포, 실제 로그인, 실제 시세 저장·조회·수정·삭제·요약과 클라우드 복합 인덱스를 확인한다.
-3. GitHub·Vercel·Render가 준비되면 무료 API·프런트를 배포하고 실제 주소의 `/healthz`·인증·CORS·이메일/Google 로그인을 확인한다.
+3. GitHub·Vercel·Render가 준비되면 무료 API·프런트를 배포하고 실제 주소의 `/healthz`·인증·CORS·이메일 로그인을 확인한다.
 4. 각 뉴스 키가 준비되면 실제 기사·출처·수집 시각과 웹 화면을 확인한다.
 5. OpenAI가 준비되면 실제 답변·도구 호출·대화 저장·새로고침 후 기록 복원을 확인한다.
 6. Discord가 준비되면 로컬 워커에서 예약 전송·전송 이력과 가격 규칙 저장을 확인한다. 실제 가격 조건 발생 여부는 관측 결과와 구분해 기록한다.

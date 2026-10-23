@@ -1,6 +1,6 @@
 # 배포 런북 (Vercel + Render + Firebase)
 
-Vercel 프런트·Render API·선택 Discord 워커의 배포 절차다. Vercel/Render 앱 배포·유료 서비스 생성·Discord 전송은 아직 수행하지 않았다. Firebase 프로젝트·기본 DB·웹 앱 생성과 규칙·인덱스 배포는 완료했다. 현재 상태는 [검증 기록](verification.md)의 마지막 절에 있다.
+Vercel 프런트·Render API·선택 Discord 워커의 배포 절차다. 실제 배포 주소·완료한 검증·남은 설정은 [검증 기록](verification.md)의 마지막 절을 따른다. 이번 배포는 이메일 로그인과 무료 Render API를 사용하며 Discord 워커는 로컬에서 먼저 검증한다.
 
 계정·키를 처음 준비할 때는 [첫 배포 준비 안내](first-deploy.md)를 먼저 따른다.
 
@@ -134,7 +134,7 @@ Render 환경변수에는 `.env`의 따옴표로 감싸기 전 JSON 원문을 �
 ### 9.1 제공자
 
 - 같은 Firebase 프로젝트에 Firestore Native mode `(default)` DB와 웹 앱을 만든다. 웹 앱의 공개 구성을 `FIREBASE_WEB_CONFIG_JSON`에 복사하고 서버 `FIREBASE_PROJECT_ID`와 일치시킨다.
-- Authentication에서 Email/Password와 Google 로그인을 켠다. 먼저 Console에서 이메일 테스트 계정을 만들고 UID를 `ALLOWED_USER_UIDS`에 입력하면 최초 API 배포를 준비할 수 있다. Google로 처음 로그인한 계정의 UID도 확인해 허용 목록에 추가한다. 로그인 성공 후 API 403이면 이 목록부터 확인한다.
+- Authentication에서 Email/Password를 켠다. 현재 웹 화면과 이번 배포는 이메일 로그인만 사용하며 Google 제공자는 비활성 상태로 유지한다. Console에서 이메일 테스트 계정을 만들고 UID를 `ALLOWED_USER_UIDS`에 입력한다. 로그인 성공 후 API 403이면 이 목록부터 확인한다.
 - 프로젝트 설정 → 서비스 계정에서 서버 키를 생성해 Render의 비공개 환경변수에 넣는다. 직접 만든 서비스 계정은 DB 읽기·쓰기를 허용하는 `roles/datastore.user` 등의 IAM 권한이 필요하다. 키 형식 검사가 이 권한을 확인하지는 않는다. [Admin SDK 설정](https://firebase.google.com/docs/admin/setup), [Firestore IAM](https://firebase.google.com/docs/firestore/security/iam) 참조.
 
 ### 9.2 승인 도메인
@@ -148,10 +148,10 @@ Render 환경변수에는 `.env`의 따옴표로 감싸기 전 JSON 원문을 �
 - 프론트 Firebase 설정의 authDomain은 기본값(<프로젝트>.firebaseapp.com)을 그대로 둔다.
 - 커스텀 authDomain이 코드에서 금지된 것은 아니다. 다만 Firebase 호스팅 프록시 구성이 제대로 갖춰진 경우에만 쓰고,
   이 프로젝트는 그 구성을 제공하지 않으므로 기본값을 쓴다.
-- signInWithPopup은 기본 authDomain 그대로 사용한다.
 
-### 9.4 Google OAuth 리다이렉트
+### 9.4 Google OAuth를 나중에 추가할 경우
 
+- 이번 배포에는 해당하지 않는다. Google 제공자와 웹 로그인 진입점을 별도로 추가할 때만 확인한다.
 - 기본 팝업 로그인 흐름에서는 Vercel용 OAuth 리다이렉트 URI를 별도로 등록하지 않는다.
 - https://<authDomain>/__/auth/handler 형식의 리다이렉트 URI는 Google Cloud OAuth 클라이언트를
   직접 손질할 때만 사용한다. 커스텀 authDomain을 쓰지 않는 한 Vercel 주소 등록이 필요하지 않다.
@@ -159,7 +159,7 @@ Render 환경변수에는 `.env`의 따옴표로 감싸기 전 JSON 원문을 �
 ### 9.5 Firestore 규칙과 인덱스
 
 - 브라우저 직접 접근은 전면 거부한다(allow read, write: if false). 모든 검사는 서버 Admin SDK에서 UID 기준으로 한다.
-- 규칙과 인덱스 배포는 Firebase CLI로 수동 실행하며, 이 문서 작성 시점에는 실행하지 않는다.
+- 규칙과 인덱스 배포는 Firebase CLI로 수동 실행한다. 이번 Firebase 프로젝트에는 이미 배포했으며 새 프로젝트를 만들 때는 아래 명령을 실행한다.
 - 기존 프로젝트에 이미 규칙이 있으면 현재 규칙을 먼저 백업한 뒤 배포한다.
 - 인덱스 정의는 `firestore.indexes.json`을 기준으로 한다. 클라우드에서 인덱스 빌드 완료를 기다리고 실제 조회를 확인한다. 에뮬레이터는 복합 인덱스 누락을 강제하지 않는다.
 
@@ -200,7 +200,7 @@ APP_ENV=production .venv/bin/python -m jobs.check_config --component worker
 2. 토큰 없이 보호 API 호출 → 401.
 3. 허용 오리진에서 호출 → 성공, 미등록 오리진에서 호출 → CORS 차단.
 4. Firebase 이메일 로그인.
-5. Firebase Google 로그인.
+5. 로그인 후 새로고침 시 세션 복원과 로그아웃 시 개인 화면 초기화.
 6. 실제 Yahoo 일봉 수집 후 데이터 생성·수정·삭제·전체 요약과 Firestore 저장 확인.
 7. Naver/Finnhub 뉴스·CNN 심리·변동성 조회. 누락된 키·공급원 실패 상태도 확인.
 8. AI 답변과 대화 저장·새로고침 후 기록 불러오기·삭제 확인.

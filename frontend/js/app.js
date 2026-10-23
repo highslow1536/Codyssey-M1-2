@@ -1,10 +1,4 @@
-import {
-  initializeAuth,
-  signIn,
-  signInGoogle,
-  signOut,
-  getToken,
-} from "./auth.js";
+import { initializeAuth, signIn, signOut, getToken } from "./auth.js";
 import { createApi } from "./api.js";
 import { initializeData } from "./data.js";
 import { initializeChat } from "./chat.js";
@@ -181,9 +175,7 @@ async function onAuthChange(nextUser) {
   }
 }
 function authBusy(busy) {
-  ["login-submit", "google-login"].forEach((id) => {
-    $(id).disabled = busy || !ready;
-  });
+  $("login-submit").disabled = busy || !ready;
 }
 async function authenticate(action) {
   authBusy(true);
@@ -201,7 +193,6 @@ $("login-form").addEventListener("submit", (event) => {
   event.preventDefault();
   authenticate(() => signIn($("email").value.trim(), $("password").value));
 });
-$("google-login").addEventListener("click", () => authenticate(signInGoogle));
 $("logout").addEventListener("click", async () => {
   try {
     await signOut();

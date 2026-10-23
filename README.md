@@ -14,7 +14,7 @@ Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약�
 - `instruments`·`market_bars` 원본과 수정 가능한 사용자 `data` 분리, 중복 방지·revision 충돌 검사.
 - 데이터 CRUD·전체 필터 요약, 대화 저장·목록·메시지 페이지 조회·하위 문서 삭제.
 - 서버 요약을 주입하는 OpenAI Responses 채팅, 자동 저장·재시도·동시 요청 제한, `summarize_dataset`·`search_news`·`get_us_sentiment`·`get_market_analysis` 도구.
-- 프레임워크 없는 HTML/CSS/JS 화면: 이메일·Google Firebase 로그인, 실제 Yahoo 수집, CRUD·기간 전체 요약·목록 차트, AI 채팅과 대화 기록 복원, 모바일 화면.
+- 프레임워크 없는 HTML/CSS/JS 화면: Firebase 이메일 로그인, 실제 Yahoo 수집, CRUD·기간 전체 요약·목록 차트, AI 채팅과 대화 기록 복원, 모바일 화면.
 
 시장 브리핑 화면에서 원본 지표·뉴스 요약·미국 시장 심리를 확인할 수 있습니다. 가격 알림은 별도의 실제 정규장 5분 봉 종가를 사용합니다. 일봉의 `event_time`은 거래소 세션 종료 시각이고 `fetched_at`은 공급원 수집 시각입니다. 데이터가 없거나 외부 호출이 실패하면 가짜 값으로 대체하지 않습니다.
 
@@ -267,7 +267,7 @@ JOB_OWNER_UID=YOUR_EMULATOR_AUTH_UID
 
 Node **22 이상**으로 정적 파일을 빌드합니다. 실행 화면은 HTML/CSS/ES modules만 사용하며 Firebase SDK는 고정된 버전의 공식 CDN에서 가져옵니다. Playwright는 개발 검사 전용입니다.
 
-1. Firebase Console의 Authentication에서 **이메일/비밀번호**를 활성화하고 사용자를 등록합니다. Google 로그인도 사용하려면 해당 제공자를 활성화합니다. 웹에 회원가입 기능은 없으며 허용 UID는 서버에서 관리합니다.
+1. Firebase Console의 Authentication에서 **이메일/비밀번호**를 활성화하고 사용자를 등록합니다. 현재 웹 화면은 이메일 로그인만 사용하며 Google 제공자는 켜지 않아도 됩니다. 웹에 회원가입 기능은 없으며 허용 UID는 서버에서 관리합니다.
 2. 프로젝트 설정 → 일반에서 웹 앱을 추가하고 공개 `firebaseConfig` 객체를 **JSON 한 줄**로 `.env`의 `FIREBASE_WEB_CONFIG_JSON`에 입력합니다. 서비스 계정 JSON과 다른 설정입니다.
 3. Authentication → 설정 → 승인된 도메인에 `localhost`와 실제 Vercel 도메인을 등록합니다. 서버의 `ALLOWED_ORIGINS`에도 프런트의 정확한 출처를 추가합니다.
 4. `.env`에 로컬 `API_BASE_URL=http://localhost:8000`과 서버 설정을 입력하고 API를 실행합니다.
@@ -280,7 +280,7 @@ node frontend/scripts/build.mjs
 python3 -m http.server 5173 --directory frontend/dist
 ```
 
-`http://localhost:5173`을 엽니다. 이메일/비밀번호 또는 Google로 로그인합니다. 로그인 상태는 탭 세션에 보관하며 새로고침 때 복원됩니다. 로그아웃 시 개인 화면을 지우고 진행 중인 요청을 취소합니다. 설정을 바꾼 뒤에는 다시 빌드하세요. 공개 설정이 없으면 로그인을 비활성화하고 오류를 표시합니다.
+`http://localhost:5173`을 엽니다. 이메일/비밀번호로 로그인합니다. 로그인 상태는 탭 세션에 보관하며 새로고침 때 복원됩니다. 로그아웃 시 개인 화면을 지우고 진행 중인 요청을 취소합니다. 설정을 바꾼 뒤에는 다시 빌드하세요. 공개 설정이 없으면 로그인을 비활성화하고 오류를 표시합니다.
 
 - **데이터 워크스페이스**: 종목·날짜 조회, Yahoo 실제 수집, 직접 추가·수정·삭제, 더 불러오기. 수정 시 revision 충돌을 서버에서 검사합니다. 추가 요청을 그대로 재시도하면 같은 idempotency key를 사용합니다.
 - **전체 요약과 차트**: 요약은 선택 기간의 모든 기록으로 계산하고, 차트는 현재 불러온 목록만 표시합니다. 수집·직접 입력·수정 기록의 출처를 구분합니다. 빈 데이터는 `—`로 표시합니다.
