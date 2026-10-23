@@ -177,3 +177,5 @@ Git에서 제외되는 로컬 `.env`를 권한 `600`으로 준비했다. GitHub 
 - 관련 뉴스 공급원·설정·배포 사전 검사 **55개 통과**, 변경 Python 파일 ruff 검사·포맷 및 `git diff --check` 통과. API HUB/legacy 요청 주소·헤더 분리, 인증 실패 시 다른 주소로 재전송하지 않음, 잘못된 모드의 사전 거부를 확인했다. 이 검사는 테스트 페이로드를 사용하며 Naver 실제 키 검증을 의미하지 않는다.
 
 Firebase 클라우드 자격·뉴스 키·OpenAI 키·Discord 웹후크는 아직 입력되지 않은 상태에서 확인한 결과다. 실제 배포 URL이나 클라우드 저장·실제 로그인·뉴스 기사·AI 답변·Discord 수신을 검증했다고 보고하지 않는다. 준비 순서는 [첫 배포 안내](first-deploy.md)에 정리했다.
+
+이후 사용자가 배포 대상 저장소를 [Codyssey-M1-2](https://github.com/highslow1536/Codyssey-M1-2)로 지정했다. 해당 저장소는 지정 당시 공개·빈 저장소였으며 기존 브랜치를 덮어쓸 필요가 없었다. 앞서 생성한 비공개 `Codyssey_M1-2`는 삭제하지 않고 `preparation-backup` 원격으로 보존하며, 지정 저장소를 `origin`으로 사용한다. Firebase 프로젝트는 새로 만들고 Discord 워커는 로컬에서 먼저 검증하기로 정했다. 이 선택으로 유료 Render 워커를 생성하지 않는다.

@@ -2,6 +2,8 @@
 
 실제 계정 연결을 위한 순서다. 배포별 환경변수·CORS·운영 절차는 [배포 런북](deployment.md)을 따른다. 키와 비밀번호는 채팅에 보내지 않고 Git에서 제외된 로컬 `.env`에 입력한다. 서버 서비스 계정 JSON은 저장소 밖에 보관한다.
 
+이번 배포는 사용자가 지정한 [GitHub 저장소](https://github.com/highslow1536/Codyssey-M1-2)와 새 Firebase 프로젝트를 사용한다. Discord 워커는 먼저 로컬에서 검증하며 유료 Render 워커는 생성하지 않는다.
+
 ## 1. Firebase — 이 항목부터 준비
 
 1. [Firebase Console](https://console.firebase.google.com/)에서 과제용 프로젝트를 만들거나 사용할 기존 프로젝트를 선택한다. **프로젝트 ID**를 `.env`의 `FIREBASE_PROJECT_ID`에 입력한다. 표시 이름과 프로젝트 ID는 다르다.
