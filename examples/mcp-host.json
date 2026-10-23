@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "stock-market-assistant": {
+      "command": "/ABSOLUTE/PATH/TO/project/.venv/bin/python",
+      "args": [
+        "-m",
+        "mcp_adapter.server",
+        "--env-file",
+        "/ABSOLUTE/PATH/TO/project/.env"
+      ],
+      "env": {}
+    }
+  }
+}

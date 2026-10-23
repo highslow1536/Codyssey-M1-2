@@ -408,17 +408,17 @@ tick은 봉을 가져올 종목을 합쳐 요청 수를 줄인다. `job_runs`에
 | 도구명 | 입력 예 | 반환 내용 | 분류 |
 | --- | --- | --- | --- |
 | `summarize_dataset` | 종목·기간 | 사용자 데이터 요약·수정 여부 | 조회 |
-| `get_market_overview` | KR/US | 시장 지수·뉴스·상태 | 조회 |
+| `get_market_overview` | KR/US·선택 종목 | 시장 지수·뉴스·상태 | 조회 |
 | `get_quote` | 종목 ID | 관측가·기준 시각·지연 | 조회 |
-| `get_price_history` | 종목·기간·간격 | 제한된 길이의 시계열·출처 | 조회 |
-| `calculate_indicators` | 종목·기간·지표 목록 | Python 계산 결과 | 조회·계산 |
+| `get_price_history` | 종목·기간·1d 간격 | 제한된 길이의 시계열·출처 | 조회 |
+| `calculate_indicators` | 종목·기간(기존 지표 전체) | Python 계산 결과 | 조회·계산 |
 | `search_news` | 시장·종목·기간 | 제목·요약·시각·원문 링크 | 조회 |
 | `get_us_sentiment` | 현재 구현은 빈 객체 | CNN·VIX·과거 비교 | 조회 |
 | `get_market_analysis` | 종목 ID | 현재 구현의 최근 1년 Yahoo 원본 지표 | 조회 |
 | `list_alerts` | 활성 여부 | 내 알림 규칙과 상태 | 조회 |
-| `preview_alert_rule` | 자연어 또는 steps | 구조화 조건과 해석·오류 | 미리보기 |
+| `preview_alert_rule` | 구조화된 steps | 구조화 조건과 해석·오류 | 미리보기 |
 | `create_alert` | 확인한 규칙·멱등 키 | 저장한 알림 | 사용자 설정 변경 |
-| `preview_briefing` | 시장·종목·기간 | 전송 전 실제 데이터 브리핑 | 생성 |
+| `preview_briefing` (후속 확장) | 시장·종목·기간 | 전송 전 실제 데이터 브리핑 | 생성 |
 
 Discord 전송은 예약 저장·웹의 발송 버튼에서 명시한 범위로 실행한다. 초기 MCP는 조회·계산·알림 생성까지 제공하며, 임의 채널로 즉시 메시지를 보내는 도구는 노출하지 않는다. `create_alert`는 조건 미리보기와 사용자의 명시적 확정 이후에만 사용한다. 일반 폼의 저장 버튼은 그 확정 동작으로 본다.
 
@@ -439,6 +439,10 @@ Discord 전송은 예약 저장·웹의 발송 버튼에서 명시한 범위로 
 ### 외부 MCP 연결
 
 초기 제출물은 공식 Python SDK의 stdio 서버다. 외부 MCP 호스트에 Python 실행 파일과 `-m mcp_adapter.server` 인수를 등록한다. 로컬 환경의 서비스 계정 자격과 `MCP_OWNER_UID`를 사용해 고정된 한 사용자의 범위만 접근한다. 요청 인수로 임의 UID나 서비스 계정 경로를 받지 않는다. stdout은 프로토콜에만 쓰고 로그는 stderr로 보낸다.
+
+현재 구현은 위 도구와 `list_instruments`, `update_alert`, `reset_alert`, `list_alert_events`, `get_alert_event`를 합친 16개다(`preview_briefing` 제외). 생성·수정·초기화는 정확한 정규화 규칙과 변경 전후를 MCP form elicitation으로 제시하고, 해당 호출에서 `accept`와 `confirmed=true`를 받은 뒤 저장한다. 도구 인수의 확인 플래그는 허용하지 않는다. 폼 미지원 호스트는 조회·미리보기만 사용하며 웹에서 저장한다. 수정은 확인 이후에도 Firestore revision 검사를 수행한다. MCP는 worker를 시작하거나 메시지를 즉시 보내지 않는다.
+
+`get_quote`는 가격 알림 worker의 종목별 수집 임대와 원본 5분 봉 캐시를 공유한다. 일봉 조회·계산은 `save_original_bars`로 공개 원본만 저장하고 사용자 편집 데이터를 변경하지 않는다. 뉴스는 기존 Function Calling과 같이 추가 요약 모델을 호출하지 않는다. 연결과 실행 예시는 [MCP 설정](mcp.md)에 있다.
 
 외부 호스트에서 실제 주가 조회와 지표 계산을 호출하고, 같은 입력의 웹/Function Calling/MCP 결과를 비교한다. 도구명·입력·출처·기준 시각을 README에 기록한다. 이 방식으로 사용자 요구인 MCP 서버 패킹과 과제의 외부 채널 호출을 충족한다. 원격 Streamable HTTP와 별도 OAuth 구축은 초기 제출 범위 이후로 둔다.
 

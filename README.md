@@ -2,7 +2,7 @@
 
 Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약으로 답하는 AI 비서를 개발합니다. 전체 설계는 [프로젝트 설계서](docs/project-design.md)에 있습니다.
 
-현재 **과제 필수 API·바닐라 웹 UI·Naver/Finnhub 뉴스·CNN/VIX·기술 지표·Discord 정기 브리핑·조건부 가격 알림**을 구현했습니다. 외부 MCP 서버는 다음 단계입니다.
+현재 **과제 필수 API·바닐라 웹 UI·뉴스·시장 지표·Discord 정기 브리핑·조건부 가격 알림·외부 MCP 서버**를 구현했습니다.
 
 ## 구현 범위
 
@@ -96,7 +96,7 @@ CNN은 [공식 화면](https://www.cnn.com/markets/fear-and-greed)이 사용하�
 
 응답의 `quality_status`는 `ok`·`stale`·`unavailable`·`insufficient_data`이며 구성요소마다 적용합니다. `event_time`/`data_as_of`는 관측 시각, `fetched_at`은 마지막 성공 수집, `last_attempt_at`은 마지막 시도입니다. 일부 공급원 실패여도 나머지 실제 데이터는 반환합니다. 오래된 뉴스는 조회 기간 밖으로 나가면 요약에서도 제외합니다.
 
-AI 채팅은 저장된 지표·CNN·VIX·최근 기사 5건을 서버 문맥으로 읽고 필요한 정보는 위 도구로 수집합니다. 데이터 화면의 날짜 필터와 별개인 최근 1년 원본 분석입니다. 출처와 도구 이력은 답변과 대화 기록에 저장합니다. 외부 MCP 전송 계층은 이후 구현합니다.
+AI 채팅은 저장된 지표·CNN·VIX·최근 기사 5건을 서버 문맥으로 읽고 필요한 정보는 위 도구로 수집합니다. 데이터 화면의 날짜 필터와 별개인 최근 1년 원본 분석입니다. 출처와 도구 이력은 답변과 대화 기록에 저장합니다. 외부 MCP에서도 같은 조회·계산 서비스를 사용하며, 연결은 [MCP 안내](docs/mcp.md)를 참고하세요.
 
 ## Discord 정기 브리핑
 
@@ -237,7 +237,7 @@ Firestore의 `alerts`는 규칙·진행 상태, `price_streams`는 종목별 수
 
 ```bash
 .venv/bin/python -m pytest tests/unit -q
-.venv/bin/ruff check app jobs tests
+.venv/bin/ruff check app jobs mcp_adapter tests
 ```
 
 Firestore 통합 검사는 **로컬 에뮬레이터만** 사용합니다. 클라우드 DB에서 테스트 데이터를 생성하지 않습니다. Firebase CLI와 지원되는 Java를 설치한 환경에서:
@@ -341,13 +341,29 @@ node frontend/tests/alerts-browser.mjs
 
 이 검사는 규칙 CRUD·순차 조건·AND·일시정지·재개·초기화·실제 관측 이력·새로고침·계정 분리·390px 화면을 확인합니다. 재시도 UI는 해당 로컬 이력의 **전송 상태만** 실패로 바꾸며, 응답 유실과 5xx에서는 같은 요청 키를 유지합니다. 브라우저로 worker를 실행하거나 실제 웹훅에 보내지 않습니다.
 
+## 외부 AI 채팅용 MCP 서버
+
+공식 Python SDK의 **로컬 stdio 서버**에 조회·계산·가격 알림 도구 16개를 제공합니다. 실행·연결 예시와 전체 계약은 [MCP 설정 안내](docs/mcp.md), 호스트 JSON 예시는 [examples/mcp-host.json](examples/mcp-host.json)에 있습니다.
+
+```bash
+uv sync --locked --extra dev
+# .env의 MCP_OWNER_UID를 ALLOWED_USER_UIDS에 등록하고 서버 Firebase 자격을 지정
+/absolute/project/.venv/bin/python -m mcp_adapter.server --env-file /absolute/project/.env
+# 별도 SDK 클라이언트로 연결 확인
+.venv/bin/python -m mcp_adapter.smoke --env-file /absolute/project/.env
+```
+
+서버는 고정된 한 사용자의 저장 데이터와 알림만 다룹니다. 기존 시세·뉴스·CNN/VIX·지표 계산을 재사용하며, 별도 OpenAI 키 없이 외부 채팅 앱의 모델이 결과를 해석합니다. 알림 생성·수정·초기화는 정확한 조건을 보여주는 **MCP form elicitation**에서 사용자가 승인한 뒤 저장합니다. 폼 미지원 호스트에서는 조회·미리보기를 사용하고 기존 웹에서 알림을 저장하세요.
+
+가격 알림의 실제 감시·Discord 전송에는 같은 UID를 설정한 별도 `jobs.tick` worker가 필요합니다. MCP는 API 서버나 worker를 자동으로 시작하지 않습니다. HTTP 주소만 받는 원격 호스트용 서버는 아직 제공하지 않습니다.
+
 ## 배포와 다음 단계
 
 `render.yaml`은 백엔드 배포 설정입니다. 아직 배포하지 않았습니다. Render의 환경변수에는 `.env.example` 중 서버 필수 항목을 입력하고, 에뮬레이터 변수는 설정하지 않습니다. `/healthz` 정상만으로 Firebase·OpenAI 연동 완료를 의미하지 않습니다. 실제 API 호출도 확인하세요.
 
 `vercel.json`은 프로젝트 루트에서 `node frontend/scripts/build.mjs`를 실행하고 `frontend/dist`를 배포하도록 구성했습니다. Vercel에는 `API_BASE_URL`과 `FIREBASE_WEB_CONFIG_JSON`만 넣습니다. 서버 키·서비스 계정·Discord 웹훅은 Render에만 저장합니다. 빌드는 공개 설정 세 항목과 Firebase 웹 구성의 허용된 필드만 출력하며 서비스 계정 입력은 거부합니다. Google 로그인에는 Vercel 도메인 승인도 필요합니다. 배포는 아직 수행하지 않았습니다.
 
-이후 구현 순서는 외부 MCP 서버 → Vercel·Render 통합 배포입니다.
+다음 단계는 Vercel·Render 통합 배포와 실제 키·웹훅을 사용한 최종 연결 확인입니다.
 
 | 제출 항목 | 상태 |
 | --- | --- |
@@ -358,4 +374,5 @@ node frontend/tests/alerts-browser.mjs
 | 뉴스·시장 심리·기술 지표 | 구현, Yahoo·CNN 실호출 및 로컬 저장 검증; Naver·Finnhub는 키 발급 후 실호출 필요 |
 | Discord 정기 브리핑 | 구현, 예약·큐·웹 이력 검증; 실제 웹훅 수신 확인은 설정 후 필요 |
 | 조건부 가격 알림 | 구현, 실제 5분 봉 수집·원자적 상태·전송 worker·웹 관리 검증; 실제 Discord 수신은 설정 후 필요 |
-| 외부 MCP·배포 URL | 다음 단계 |
+| 외부 MCP | stdio 도구 16개 구현; SDK 클라이언트·실제 Yahoo 검증, 실제 AI 호스트 대화 확인은 설정 후 필요 |
+| 배포 URL | Vercel·Render 배포 전 |
