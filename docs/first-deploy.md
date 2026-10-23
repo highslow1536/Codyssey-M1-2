@@ -4,6 +4,8 @@
 
 이번 배포는 사용자가 지정한 [GitHub 저장소](https://github.com/highslow1536/Codyssey-M1-2)와 새 Firebase 프로젝트를 사용한다. Discord 워커는 먼저 로컬에서 검증하며 유료 Render 워커는 생성하지 않는다.
 
+현재 `codyssey-m1-2-z6456f` 프로젝트·싱가포르(`asia-southeast1`)의 기본 Firestore Native DB·웹 앱을 생성했다. Firestore 규칙·인덱스를 배포했고 `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_CONFIG_JSON`은 로컬 `.env`에 저장했다. 이 프로젝트에서 다음으로 준비할 항목은 Authentication 제공자·테스트 사용자 UID·서버 자격 파일이다. 아래 생성 절차는 다른 환경을 새로 구성할 때도 사용할 수 있다.
+
 ## 1. Firebase — 이 항목부터 준비
 
 1. [Firebase Console](https://console.firebase.google.com/)에서 과제용 프로젝트를 만들거나 사용할 기존 프로젝트를 선택한다. **프로젝트 ID**를 `.env`의 `FIREBASE_PROJECT_ID`에 입력한다. 표시 이름과 프로젝트 ID는 다르다.

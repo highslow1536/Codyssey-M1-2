@@ -179,3 +179,15 @@ Git에서 제외되는 로컬 `.env`를 권한 `600`으로 준비했다. GitHub 
 Firebase 클라우드 자격·뉴스 키·OpenAI 키·Discord 웹후크는 아직 입력되지 않은 상태에서 확인한 결과다. 실제 배포 URL이나 클라우드 저장·실제 로그인·뉴스 기사·AI 답변·Discord 수신을 검증했다고 보고하지 않는다. 준비 순서는 [첫 배포 안내](first-deploy.md)에 정리했다.
 
 이후 사용자가 배포 대상 저장소를 [Codyssey-M1-2](https://github.com/highslow1536/Codyssey-M1-2)로 지정했다. 해당 저장소는 지정 당시 공개·빈 저장소였으며 기존 브랜치를 덮어쓸 필요가 없었다. 앞서 생성한 비공개 `Codyssey_M1-2`는 삭제하지 않고 `preparation-backup` 원격으로 보존하며, 지정 저장소를 `origin`으로 사용한다. Firebase 프로젝트는 새로 만들고 Discord 워커는 로컬에서 먼저 검증하기로 정했다. 이 선택으로 유료 Render 워커를 생성하지 않는다.
+
+## Firebase 클라우드 초기 구성 (2026-10-23)
+
+사용자의 브라우저 CLI 인증 후 `codyssey-m1-2-z6456f` 프로젝트와 웹 앱을 생성했다. 프로젝트 ID와 웹 공개 config는 키 값을 채팅에 출력하지 않고 Git 제외 `.env`에 직접 저장했다.
+
+- 기본 DB의 실제 메타데이터에서 `FIRESTORE_NATIVE`, `STANDARD`, `asia-southeast1`, `freeTier: true`를 확인했다. 결제 계정이나 유료 기능은 연결하지 않았다.
+- DB 생성 CLI의 첫 요청은 Firestore API 비활성화로 403을 반환했다. 이후 `firebase.json`에 `(default)`·싱가포르 위치를 명시하고 표준 `firebase deploy --only firestore:rules,firestore:indexes`를 실행해 API 활성화·기본 DB 생성·규칙·인덱스 배포를 완료했다. 기본 북미 위치로 생성되지 않도록 위치를 고정했고 Render API에도 `region: singapore`를 명시했다.
+- 실제 클라우드에서 미인증 Firestore REST 읽기가 **403 `PERMISSION_DENIED`**로 거부됐다. 데이터 문서는 쓰지 않았다. 증빙: `artifacts/firebase-rules-live.json`.
+- 클라우드에서 복합 인덱스 **10개**, 필드 설정 **23개**를 내보냈다. 처음 단순 비교는 Firestore가 자동으로 추가한 `__name__` 정렬·기본 밀도 때문에 불일치했다. CLI의 실제 정규화 로직과 내보낸 필드를 확인한 뒤 기본값까지 포함해 비교했고 10개 정의와 23개 설정이 모두 일치했다. 빌드 완료 상태나 실제 인증된 데이터 쿼리는 이 검사에 포함하지 않았다. 증빙: `artifacts/firebase-indexes-export.json`, `artifacts/firebase-indexes-live.json`.
+- 변경한 Render API 설정은 현재 공식 Blueprint JSON Schema를 통과했다. `firebase.json`의 JSON·Prettier 검사와 `git diff --check`도 통과했다. 앱 코드는 바꾸지 않아 기존 전체 단위 검사를 반복하지 않았다.
+
+Authentication 제공자·테스트 사용자 UID·서버 서비스 계정 파일은 아직 입력 대기다. Vercel·Render CLI도 브라우저 인증 대기이며 앱 배포는 하지 않았다. 클라우드 데이터 CRUD·사용자 로그인·뉴스·AI·Discord 수신은 다음 단계에서 실제 자격과 함께 검증한다.

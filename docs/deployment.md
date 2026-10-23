@@ -1,6 +1,6 @@
 # 배포 런북 (Vercel + Render + Firebase)
 
-Vercel 프런트·Render API·선택 Discord 워커의 배포 절차다. 실제 클라우드 배포·유료 서비스 생성·Discord 전송은 아직 수행하지 않았다. 로컬 검증 결과는 [검증 기록](verification.md)의 배포 준비 절에 있다.
+Vercel 프런트·Render API·선택 Discord 워커의 배포 절차다. Vercel/Render 앱 배포·유료 서비스 생성·Discord 전송은 아직 수행하지 않았다. Firebase 프로젝트·기본 DB·웹 앱 생성과 규칙·인덱스 배포는 완료했다. 현재 상태는 [검증 기록](verification.md)의 마지막 절에 있다.
 
 계정·키를 처음 준비할 때는 [첫 배포 준비 안내](first-deploy.md)를 먼저 따른다.
 
@@ -27,7 +27,7 @@ API 주소와 프론트 주소가 서로를 참조하므로 아래 순서대로 
 5. Firebase 승인 도메인에 Vercel 호스트명을 추가한다(9장).
 6. 11장의 수동 점검 후 필요하면 별도 워커를 생성한다. 로컬 워커를 쓰면 유료 워커는 생성하지 않는다.
 
-Render 리전은 Firebase 데이터베이스와 가깝게 둔다. Vercel 정적 호스팅에는 컴퓨트 리전 선택이 없으므로
+이번 Firebase DB는 `asia-southeast1`이며 `firebase.json`의 신규 DB 생성 위치도 같은 값으로 지정했다. Render API Blueprint는 `region: singapore`로 맞췄다. 다른 Firebase DB를 쓰면 Render 리전도 가깝게 둔다. Vercel 정적 호스팅에는 컴퓨트 리전 선택이 없으므로
 Vercel 쪽 리전 설정은 신경 쓰지 않는다.
 
 ## 3. Vercel 설정
