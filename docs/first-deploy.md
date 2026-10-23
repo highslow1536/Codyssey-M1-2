@@ -4,7 +4,7 @@
 
 이번 배포는 사용자가 지정한 [GitHub 저장소](https://github.com/highslow1536/Codyssey-M1-2)와 새 Firebase 프로젝트를 사용한다. Discord 워커는 먼저 로컬에서 검증하며 유료 Render 워커는 생성하지 않는다.
 
-현재 `codyssey-m1-2-z6456f` 프로젝트·싱가포르(`asia-southeast1`)의 기본 Firestore Native DB·웹 앱을 생성했다. Firestore 규칙·인덱스와 Vercel 운영 도메인 승인을 마쳤다. 이메일 로그인과 입력된 UID의 활성 상태를 확인했고, 사용자가 `credentials/`에 복사한 서버 자격으로 실제 Auth 조회·Firestore 읽기도 성공했다. 사용자 선택에 따라 Google 제공자는 비활성 상태로 유지한다. Vercel·Render CLI 인증과 무료 Render API 생성도 완료했으며 웹·데이터 검증을 진행한다. 최신 배포 주소와 검증 범위는 [검증 기록](verification.md)의 마지막 절을 따른다. 아래 생성 절차는 다른 환경을 새로 구성할 때도 사용할 수 있다.
+현재 `codyssey-m1-2-z6456f` 프로젝트·싱가포르(`asia-southeast1`)의 기본 Firestore Native DB·웹 앱을 생성했다. Firestore 규칙·인덱스와 Vercel 운영 도메인 승인을 마쳤다. 사용자가 `credentials/`에 복사한 서버 자격의 실제 권한을 확인했고, Vercel 웹·무료 Render API 배포와 실제 Yahoo 저장·CRUD·지표 검증을 완료했다. 사용자도 이메일 로그인과 데이터 표시를 확인했다. Google 제공자는 사용자 선택에 따라 비활성 상태로 유지한다. 최신 배포 주소와 남은 키 설정은 [배포 런북](deployment.md)의 현재 운영 배포와 [검증 기록](verification.md)의 마지막 절을 따른다. 아래 생성 절차는 다른 환경을 새로 구성할 때도 사용할 수 있다.
 
 ## 1. Firebase — 이 항목부터 준비
 

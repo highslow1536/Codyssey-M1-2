@@ -4,6 +4,29 @@ Vercel 프런트·Render API·선택 Discord 워커의 배포 절차다. 실제 
 
 계정·키를 처음 준비할 때는 [첫 배포 준비 안내](first-deploy.md)를 먼저 따른다.
 
+## 현재 운영 배포
+
+- 웹: [마켓노트](https://codyssey-m1-2-gold.vercel.app)
+- API: [헬스 체크](https://stock-market-assistant-api.onrender.com/healthz)
+- Render: [무료 API 서비스](https://dashboard.render.com/web/srv-dbdnc2t9fdbs73bnqoi0), `singapore`, Python `3.12.14`.
+- Firebase: `codyssey-m1-2-z6456f`, 이메일/비밀번호 로그인. Google 제공자는 사용자 선택에 따라 비활성 상태다.
+
+현재 Render 서비스는 CLI로 생성했으며 Blueprint 관리에는 연결하지 않았다. `render.yaml`의 무료 플랜·리전·빌드·시작 명령·헬스 체크를 동일하게 적용했다. 서버 자격은 다음 Secret File 방식으로 전달했다.
+
+| Render 설정 위치 | 이름 | 값 또는 역할 |
+| --- | --- | --- |
+| Environment | `APP_ENV` | `production` |
+| Environment | `PYTHON_VERSION` | `3.12.14` |
+| Environment | `STOCK_ASSISTANT_ENV_FILE` | `/etc/secrets/stock-assistant.env` |
+| Secret Files | `stock-assistant.env` | 허용 UID·정확한 운영 CORS·공급원 설정을 담은 서버용 dotenv |
+| Secret Files | `firebase-service-account.json` | Firebase 서버 자격 JSON |
+
+서버용 dotenv의 `GOOGLE_APPLICATION_CREDENTIALS`는 `/etc/secrets/firebase-service-account.json`이다. `FIREBASE_SERVICE_ACCOUNT_JSON`과 에뮬레이터 설정은 넣지 않았다. 로컬의 서버 설정 생성본은 Git 제외 `artifacts/deployment/render-api.env`에 있으며 키가 포함될 수 있으므로 공유하지 않는다.
+
+키를 추가할 때 로컬 `.env` 수정만으로 운영 환경이 바뀌지는 않는다. Render의 `stock-assistant.env`에도 필요한 값을 반영하고 기존 UID·CORS·서버 자격 경로를 보존한 채 재배포한다. 일반 Environment에 같은 키가 있으면 Secret File보다 우선하므로 중복 설정을 피한다. Vercel에는 계속 공개 `API_BASE_URL`·`FIREBASE_WEB_CONFIG_JSON`만 등록한다.
+
+이번 Vercel 배포는 `vercel deploy --prod`로 수행했다. Vercel 프로젝트의 Git 자동 배포 연결은 아직 없으므로 웹 변경은 같은 CLI로 다시 배포하거나 별도로 저장소를 연결한다. Discord 웹후크는 아직 입력되지 않았으며 로컬 워커와 유료 Render 워커는 실행하지 않았다. 실제 완료 범위와 공급원 지연은 [검증 기록](verification.md)을 따른다.
+
 ## 1. 구성 개요
 
 - 프론트엔드: Vercel 정적 호스팅. 저장소 루트에서 빌드하고 frontend/dist를 제공한다.

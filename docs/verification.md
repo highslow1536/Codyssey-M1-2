@@ -200,3 +200,22 @@ Authentication 제공자·테스트 사용자 UID·서버 서비스 계정 파�
 - `.vercelignore`에 프런트와 `vercel.json`만 허용했다. 실제 `vercel deploy --dry --json`은 파일 항목 **17개**를 반환했고 `.env`·`.env.local`·서버 코드·`credentials/`·검증 산출물이 제외됐다. 업로드나 배포는 발생하지 않았다. 증빙: `artifacts/deployment/vercel-dry-run.json`. Vercel CLI가 추가한 중복 Git 제외 규칙은 기존 규칙으로 충분해 제거했고, 생성된 로컬 토큰 파일은 Git 제외 및 권한 `600`을 확인했다.
 
 사용자가 입력한 서버 자격 경로는 일반 실행과 승인된 실행 모두 macOS의 `Operation not permitted`로 차단됐다. OS 권한을 우회하지 않고 사용자가 Git 제외 `credentials/`에 직접 복사하도록 안내했다. 이 시점에 해당 폴더의 JSON 파일은 없으며 실제 서비스 계정 검증·Firestore 데이터 저장·Render API·Vercel 웹 배포는 대기 중이다. Naver·Finnhub·OpenAI·Discord 키도 미입력이어서 해당 실제 연동은 검증하지 않았다. 설정·문서 변경 범위에서 실제 CLI 검증과 `git diff --check`를 수행했으며 앱 단위 검사는 반복하지 않았다.
+
+## 실제 운영 배포와 이메일 로그인 (2026-10-24 KST)
+
+사용자가 서비스 계정 JSON을 Git 제외 `credentials/`에 복사하고 `.env` 경로를 변경했다. 파일 권한을 `600`으로 제한한 뒤 실제 서비스 계정으로 입력 UID의 활성 상태·Auth 조회·Firestore 읽기를 확인했다. 에뮬레이터는 사용하지 않았다. 사용자의 선택에 따라 Google 제공자는 비활성 상태로 유지하고 웹에서 해당 버튼을 제거했다.
+
+- 운영 웹: [마켓노트](https://codyssey-m1-2-gold.vercel.app). Vercel Hobby 프로젝트에 CLI로 배포해 `READY`를 확인했다. 배포 ID는 `dpl_J3wNjgxf8GgP8nVB1A42PnHFrdSv`이며 웹 소스는 이메일 로그인 변경 커밋 `d0297be`다. 웹·스크립트·공개 config가 모두 200이며 `config.js`는 `no-store`다. `/.env`·`/credentials/firebase-service-account.json`·`/app/main.py`는 모두 404였다. Vercel Git 자동 배포 연결은 아직 없다.
+- 운영 API: [Render 헬스 체크](https://stock-market-assistant-api.onrender.com/healthz). 서비스 `srv-dbdnc2t9fdbs73bnqoi0`를 `free`·`singapore`·Python `3.12.14`로 생성했다. 서버 설정과 Firebase 자격은 Render Secret Files 두 개로 전달했으며 Vercel에는 공개 설정 두 개만 등록했다. 현재 경로와 키 갱신 절차는 [배포 런북](deployment.md)의 현재 운영 배포에 있다.
+- 실제 API에서 `/healthz` **200**, 토큰 없는 보호 API **401**, 실제 Firebase ID 토큰의 종목·데이터·대화 조회 **200**을 확인했다. 자동 검증에는 기존 허용 UID의 Admin custom token을 Firebase ID 토큰으로 교환해 사용했고 토큰은 메모리에서만 보관했다. 허용 운영 오리진의 CORS 사전 요청은 **200**, 미등록 오리진은 **400**이었다.
+- Firestore 복합 인덱스 10개를 실제 Admin API로 조회해 모두 **READY**이며 추가 페이지가 없음을 확인했다. 정의 일치뿐 아니라 빌드 완료 상태까지 확인했다. 증빙: `artifacts/deployment/firestore-indexes-ready-live.json`.
+- 사용자가 운영 웹에서 **이메일/비밀번호 로그인 성공과 데이터 표시를 직접 확인**했다. 비밀번호를 채팅이나 검증 코드로 받지 않았다. 브라우저에서도 이메일 버튼만 있는 화면과 정상 초기화를 확인했다. Google 로그인 활성화는 완료 조건에서 제외했다. 브라우저 새로고침 후 인증 세션 복원은 이번 실계정 검증에 포함하지 않았다.
+- Yahoo 실제 일봉을 지수·종목 **9개, 2,233건** 저장했다. 수집 시작 범위는 `2025-10-23~2026-10-23`이었다. 자정을 지난 후 실행한 `jobs.verify_data`의 최근 365일 범위는 `2025-10-24~2026-10-24`이므로 각 종목의 첫 하루를 제외한 **2,224건**이 검증됐다. 모든 종목이 100건 이상이고 출처가 Yahoo이며 사용자가 수정하지 않은 원본 복사 데이터임을 확인했다. 과거 하루를 삭제한 결과가 아니다.
+- 실제 API의 데이터 페이지 이동·생성·같은 키의 재생성·메모 수정·오래된 revision 거부 **409**·삭제 **204**·기간 전체 요약을 확인했다. 검증용 행의 값은 실제 Yahoo 관측값을 그대로 사용했다. 이 행만 소프트 삭제한 뒤 KOSPI 요약 개수가 전후 **245건**으로 같은 것을 확인했다. 실제 원본 한 건의 재가져오기에서도 신규·수정 데이터와 원본 수정이 모두 0건이었다.
+- 검증용 사용자 메시지를 담은 대화를 생성하고 목록·상세에서 저장된 내용 복원을 확인한 뒤 해당 검증 대화만 삭제했다. AI가 생성한 답변으로 취급하지 않았다. 가격 규칙·알림 이력·예약·브리핑 이력 목록도 모두 **200**이었다. 이번 운영 검증에서 규칙·예약 생성·Discord 전송을 실행하지는 않았다.
+- 배포된 API가 CNN 피드를 실제 수집해 **20.9402597402597**, 관측 시각 `2026-10-23T15:03:47Z`, 수집 시각 `2026-10-23T15:06:51Z`를 반환했다(`quality_status: ok`). VIX와 AAPL의 실제 변동성 계산도 정상 반환했다. 삼성전자는 공급원이 반환한 최신 완료 일봉이 `2026-10-22`여서 `quality_status: stale`로 표시했다. 누락된 가격을 만들어 채우지 않았다.
+- 프런트 단위 검사 **37개**, 변경 HTML/JS의 Prettier, 실제 설정의 운영 빌드와 `git diff --check`가 통과했다. 백엔드 앱 코드는 변경하지 않아 기존 전체 Python 검사를 반복하지 않았으며 실제 배포 API·Firestore 왕복으로 운영 연결을 검증했다.
+
+로컬 증빙은 Git 제외 `artifacts/deployment/`의 `firebase-service-account-live.json`, `firestore-data-live.json`, `render-auth-smoke.json`, `render-crud-live.json`, `render-research-live.json`, `vercel-public-http.json`, `vercel-deployment.json`, `render-service.json`에 있다. 서버 설정 생성본과 private 원본 로그는 비밀값이 포함될 수 있으므로 공유하지 않는다.
+
+Naver·Finnhub·OpenAI·Discord 설정은 아직 비어 있다. 실제 뉴스 API는 `news_not_configured`와 빈 기사 목록을, 채팅은 **503 `model_not_configured`**를 반환했다. 실제 뉴스 기사·AI 답변·Discord 수신은 키 입력 후 남은 검증이며 합성 결과로 대체하지 않았다. 로컬 Discord 워커를 시작하거나 유료 Render 워커를 생성하지 않았다.
