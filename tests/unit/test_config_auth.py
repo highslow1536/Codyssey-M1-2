@@ -20,6 +20,14 @@ def test_example_blank_secrets_are_not_credentials():
     assert settings.openai_api_key is None
 
 
+def test_naver_mode_defaults_to_api_hub_and_rejects_typos(monkeypatch):
+    monkeypatch.delenv("NAVER_API_MODE", raising=False)
+    assert Settings(_env_file=None).naver_api_mode == "api_hub"
+    assert Settings(_env_file=None, naver_api_mode="legacy").naver_api_mode == "legacy"
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, naver_api_mode="invalid")
+
+
 def test_health_docs_and_authentication_boundary():
     with TestClient(app) as client:
         assert client.get("/healthz").json() == {"status": "ok"}

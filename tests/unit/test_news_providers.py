@@ -22,8 +22,8 @@ NOW = datetime(2026, 10, 22, 0, 0, 0, tzinfo=timezone.utc)
 SINCE = NOW - timedelta(days=7)
 
 
-def _naver_settings(cid="test-id", sec="test-secret"):
-    return SimpleNamespace(naver_client_id=cid, naver_client_secret=sec)
+def _naver_settings(cid="test-id", sec="test-secret", mode="api_hub"):
+    return SimpleNamespace(naver_client_id=cid, naver_client_secret=sec, naver_api_mode=mode)
 
 
 def _finnhub_settings(tok="test-token"):
@@ -146,13 +146,16 @@ def test_naver_sends_headers_query_and_normalizes_rows():
     p = NaverNewsProvider(_naver_settings(), client=_client(handler))
     res = p.fetch(market="KR", instrument=None, since=SINCE, now=NOW)
     h = {k.lower(): v for k, v in seen["headers"].items()}
-    assert h["x-naver-client-id"] == "test-id"
-    assert h["x-naver-client-secret"] == "test-secret"
+    assert h["x-ncp-apigw-api-key-id"] == "test-id"
+    assert h["x-ncp-apigw-api-key"] == "test-secret"
+    assert "x-naver-client-id" not in h
+    assert "x-naver-client-secret" not in h
     assert seen["params"]["query"] == "증시"
     assert seen["params"]["sort"] == "date"
     assert seen["params"]["display"] == "100"
     assert seen["params"]["start"] == "1"
-    assert seen["url"].startswith("https://openapi.naver.com/v1/search/news.json")
+    assert seen["params"]["format"] == "json"
+    assert seen["url"].startswith("https://naverapihub.apigw.ntruss.com/search/v1/news?")
     assert res["query"] == "증시"
     assert res["truncated"] is False
     assert "증시" in res["coverage_note"]
@@ -170,6 +173,50 @@ def test_naver_sends_headers_query_and_normalizes_rows():
     assert first["fetched_at"] == NOW
     assert first["id"] == hashlib.sha256(first["source_url"].encode()).hexdigest()
     assert len(first["title"]) <= 500 and len(first["summary"]) <= 1500
+
+
+def test_naver_legacy_credentials_use_only_legacy_endpoint():
+    seen = []
+
+    def handler(request: httpx.Request):
+        seen.append(request)
+        return httpx.Response(200, json={"items": []})
+
+    provider = NaverNewsProvider(_naver_settings(mode="legacy"), client=_client(handler))
+    provider.fetch(market="KR", instrument=None, since=SINCE, now=NOW)
+    assert len(seen) == 1
+    request = seen[0]
+    assert str(request.url).startswith("https://openapi.naver.com/v1/search/news.json?")
+    assert request.headers["x-naver-client-id"] == "test-id"
+    assert request.headers["x-naver-client-secret"] == "test-secret"
+    assert "x-ncp-apigw-api-key" not in request.headers
+    assert "x-ncp-apigw-api-key-id" not in request.headers
+    assert "format" not in request.url.params
+
+
+@pytest.mark.parametrize("mode", ["api_hub", "legacy"])
+def test_naver_auth_failure_does_not_retry_against_other_endpoint(mode):
+    seen = []
+
+    def handler(request: httpx.Request):
+        seen.append(request)
+        return httpx.Response(403)
+
+    provider = NaverNewsProvider(_naver_settings(mode=mode), client=_client(handler))
+    with pytest.raises(AppError) as error:
+        provider.fetch(market="KR", instrument=None, since=SINCE, now=NOW)
+    assert error.value.code == "news_provider_unauthorized"
+    assert len(seen) == 1
+
+
+def test_naver_invalid_mode_fails_before_http_request():
+    def handler(request: httpx.Request):
+        pytest.fail("Invalid mode must not send credentials")
+
+    provider = NaverNewsProvider(_naver_settings(mode="invalid"), client=_client(handler))
+    with pytest.raises(AppError) as error:
+        provider.fetch(market="KR", instrument=None, since=SINCE, now=NOW)
+    assert error.value.code == "news_not_configured"
 
 
 def test_naver_instrument_query_catalog_mapping():

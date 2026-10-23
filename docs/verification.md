@@ -1,6 +1,6 @@
 # 백엔드·바닐라 웹 UI 검증
 
-최신 검증일: 2026년 10월 22일. 아래 초기 데이터·웹 검증은 10월 21일 기록이며, 새 리서치 통합 결과는 별도 절에 기록한다. Python 3.12.14, 프로젝트 `.venv`와 `uv.lock` 사용.
+최신 검증일: 2026년 10월 23일. 아래 초기 데이터·웹 검증은 10월 21일 기록이며, 새 리서치 통합 결과는 별도 절에 기록한다. Python 3.12.14, 프로젝트 `.venv`와 `uv.lock` 사용.
 
 ## 실제 수집과 저장
 
@@ -166,3 +166,14 @@ Discord 어댑터는 공식 [Execute Webhook](https://docs.discord.com/developer
 로컬 증빙은 무시 경로 `artifacts/deployment/`의 `schema-validation.json`, `startup-smoke.json`, `frontend-build.json`과 시작·종료 로그에 있다. 검증에 사용한 로컬 서버·에뮬레이터는 종료했다.
 
 실제 Vercel/Render 배포, Firebase 승인 도메인·클라우드 규칙·인덱스 변경, 실제 자격 권한, Google 로그인, 뉴스 키·OpenAI·Discord 실연동은 수행하지 않았다. `/healthz`와 오프라인 사전 검사로 이 항목들을 검증했다고 해석하지 않는다.
+
+## 첫 실제 연동 준비와 공급원 재확인 (2026-10-23)
+
+Git에서 제외되는 로컬 `.env`를 권한 `600`으로 준비했다. GitHub CLI 인증은 확인했지만 Git 원격 저장소는 아직 연결하지 않았다. Vercel CLI 65.1.0과 SHA-256을 확인한 공식 Render CLI 2.31.0을 저장소 밖 임시 디렉터리에 준비했다. 클라우드 배포는 사용자 계정 인증·Firebase 자격 입력 이후에 진행한다.
+
+- Yahoo를 실제 재호출해 삼성전자 **245건**(2025-10-23~2026-10-23), AAPL·VIX **각 251건**(2025-10-23~2026-10-22)의 완료 일봉을 읽었다. `--fetch-only` 실행으로 **DB 쓰기는 하지 않았다**. 증빙: `artifacts/deployment-yahoo-real.json`.
+- CNN을 실제 재호출해 **252개** 과거 관측과 현재 스냅샷을 읽었다. 관측 시각은 `2026-10-23T11:38:37Z`, 수집 시각은 `2026-10-23T11:56:27Z`였다. 값은 당시 응답이며 고정 시연값이 아니다. 증빙: `artifacts/deployment-cnn-real.json`.
+- Naver 공식 문서에서 신규 검색 API가 NAVER API HUB로 이전했음을 확인했다. 기본 공급원 주소와 인증 헤더를 API HUB로 변경하고 `NAVER_API_MODE=legacy`로 이전 개발자센터 키도 명시적으로 선택할 수 있게 했다. 두 주소 사이의 자동 자격 재시도는 하지 않는다.
+- 관련 뉴스 공급원·설정·배포 사전 검사 **55개 통과**, 변경 Python 파일 ruff 검사·포맷 및 `git diff --check` 통과. API HUB/legacy 요청 주소·헤더 분리, 인증 실패 시 다른 주소로 재전송하지 않음, 잘못된 모드의 사전 거부를 확인했다. 이 검사는 테스트 페이로드를 사용하며 Naver 실제 키 검증을 의미하지 않는다.
+
+Firebase 클라우드 자격·뉴스 키·OpenAI 키·Discord 웹후크는 아직 입력되지 않은 상태에서 확인한 결과다. 실제 배포 URL이나 클라우드 저장·실제 로그인·뉴스 기사·AI 답변·Discord 수신을 검증했다고 보고하지 않는다. 준비 순서는 [첫 배포 안내](first-deploy.md)에 정리했다.

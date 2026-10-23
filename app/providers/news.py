@@ -22,7 +22,8 @@ __all__ = [
     "FinnhubNewsProvider",
 ]
 
-NAVER_URL = "https://openapi.naver.com/v1/search/news.json"
+NAVER_API_HUB_URL = "https://naverapihub.apigw.ntruss.com/search/v1/news"
+NAVER_LEGACY_URL = "https://openapi.naver.com/v1/search/news.json"
 FINNHUB_NEWS_URL = "https://finnhub.io/api/v1/news"
 FINNHUB_COMPANY_URL = "https://finnhub.io/api/v1/company-news"
 REQUEST_TIMEOUT_S = 10.0
@@ -255,7 +256,15 @@ class NaverNewsProvider:
         else:
             query = NAVER_MARKET_QUERY
         cid, sec = self._credentials()
-        headers = {"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": sec}
+        mode = getattr(self._settings, "naver_api_mode", "api_hub")
+        if mode == "api_hub":
+            url = NAVER_API_HUB_URL
+            headers = {"X-NCP-APIGW-API-KEY-ID": cid, "X-NCP-APIGW-API-KEY": sec}
+        elif mode == "legacy":
+            url = NAVER_LEGACY_URL
+            headers = {"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": sec}
+        else:
+            raise AppError(503, "news_not_configured", "Invalid NAVER_API_MODE configuration.")
         collected: list[dict] = []
         total: int | None = None
         raw_count = 0
@@ -270,8 +279,10 @@ class NaverNewsProvider:
                 if start > NAVER_MAX_START:
                     break
                 params = {"query": query, "display": NAVER_DISPLAY, "start": start, "sort": "date"}
+                if mode == "api_hub":
+                    params["format"] = "json"
                 try:
-                    resp = _http_get(self._client, NAVER_URL, headers, params)
+                    resp = _http_get(self._client, url, headers, params)
                 except AppError:
                     raise
                 except Exception as exc:

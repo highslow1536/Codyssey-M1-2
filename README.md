@@ -4,6 +4,8 @@ Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약�
 
 현재 **과제 필수 API·바닐라 웹 UI·뉴스·시장 지표·Discord 정기 브리핑·조건부 가격 알림·외부 MCP 서버**를 구현했고, Vercel·Render 배포 설정과 운영 절차를 준비했습니다.
 
+실제 계정·키 준비는 [첫 배포 안내](docs/first-deploy.md), 서비스별 설정과 운영은 [배포 런북](docs/deployment.md)을 따릅니다.
+
 ## 구현 범위
 
 - Python 가상환경, 버전 잠금, FastAPI·Swagger·CORS·요청 ID·오류 응답.
@@ -71,7 +73,7 @@ Yahoo에는 키가 필요하지 않습니다. 기본은 9개 대상 각각 최�
 
 ## 뉴스·시장 심리·기술 지표
 
-`.env`에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `FINNHUB_API_KEY`를 입력하고 API를 재시작합니다. [Naver 개발자센터](https://developers.naver.com/docs/serviceapi/search/news/news.md)의 검색 API와 [Finnhub](https://finnhub.io/docs/api/market-news)의 무료 키를 사용합니다. 키를 입력하지 않은 시장은 설정 필요 상태이며 가짜 뉴스로 대체하지 않습니다. 키는 백엔드에만 둡니다.
+`.env`에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `FINNHUB_API_KEY`를 입력하고 API를 재시작합니다. 신규 Naver 키는 [NAVER API HUB](https://guide.ncloud-docs.com/docs/apihub-migration)의 검색 API를 신청하고 `NAVER_API_MODE=api_hub`(기본값)로 사용합니다. 2026-07-31 이전 개발자센터에서 발급한 키는 `legacy`로 명시해야 하며, 기존 서비스는 2027-06-30 종료 예정입니다. 두 방식의 키를 자동으로 교환하거나 재시도하지 않습니다. API HUB는 현재 무료 플랜을 제공하며 향후 정책은 신청 화면에서 확인하세요. [Finnhub](https://finnhub.io/docs/api/market-news)는 무료 키를 사용합니다. 키를 입력하지 않은 시장은 설정 필요 상태이며 가짜 뉴스로 대체하지 않습니다. 키는 백엔드에만 둡니다.
 
 로그인 후 **시장 브리핑**에서 종목과 뉴스 기간(24시간/7일)을 선택합니다. 완료된 최근 1년의 Yahoo 일봉, CNN, VIX, 해당 시장의 뉴스를 병렬 수집합니다. 국내 뉴스는 Naver 시장·종목 키워드, 미국 개별 종목은 Finnhub company-news, 미국 지수는 general 시장 뉴스입니다. `GET /api/news?market=KR&window=24h`처럼 종목을 생략하면 전체 시장 키워드로 조회합니다. 조회 범위는 공급원이 반환한 기사에 한정되며 7일 전체 뉴스를 보장하지 않습니다. URL 및 같은 발행일의 제목·출처로 중복을 제거하고 최신 50건까지 저장·표시합니다. Naver 조회는 최대 500건이며 잘린 결과는 표시합니다.
 

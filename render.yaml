@@ -31,6 +31,8 @@ services:
         sync: false
       - key: DATA_POLL_MINUTES
         value: "5"
+      - key: NAVER_API_MODE
+        value: api_hub
       - key: NAVER_CLIENT_ID
         sync: false
       - key: NAVER_CLIENT_SECRET

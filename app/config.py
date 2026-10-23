@@ -1,5 +1,6 @@
 import os
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
     max_tool_calls: int = Field(default=5, ge=0, le=10)
     max_tool_rounds: int = Field(default=3, ge=1, le=5)
     chat_lease_seconds: int = Field(default=300, ge=60, le=900)
+    naver_api_mode: Literal["api_hub", "legacy"] = "api_hub"
     naver_client_id: str | None = Field(default=None, repr=False)
     naver_client_secret: str | None = Field(default=None, repr=False)
     finnhub_api_key: str | None = Field(default=None, repr=False)

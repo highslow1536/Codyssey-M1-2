@@ -2,6 +2,8 @@
 
 Vercel 프런트·Render API·선택 Discord 워커의 배포 절차다. 실제 클라우드 배포·유료 서비스 생성·Discord 전송은 아직 수행하지 않았다. 로컬 검증 결과는 [검증 기록](verification.md)의 배포 준비 절에 있다.
 
+계정·키를 처음 준비할 때는 [첫 배포 준비 안내](first-deploy.md)를 먼저 따른다.
+
 ## 1. 구성 개요
 
 - 프론트엔드: Vercel 정적 호스팅. 저장소 루트에서 빌드하고 frontend/dist를 제공한다.
@@ -104,6 +106,7 @@ OpenAI/Naver/Finnhub 키가 비어 있으면 경고만 남긴다. OpenAI 채팅�
 | JOB_OWNER_UID | - | 등록 (큐 처리 시 필요) | 보유 (필수, 허용 목록 중 하나) |
 | ALLOWED_ORIGINS | - | 보유 (정확한 https 오리진) | - |
 | OPENAI_API_KEY / OPENAI_MODEL | 절대 금지 | 보유 (없으면 경고) | 보유 (같은 값) |
+| NAVER_API_MODE | - | api_hub (기존 개발자센터 키는 legacy) | API와 같은 값 |
 | NAVER_CLIENT_ID / NAVER_CLIENT_SECRET / FINNHUB_API_KEY | - | 보유 (없으면 경고) | 보유 (같은 값) |
 | NEWS_CACHE_MINUTES / SENTIMENT_CACHE_MINUTES / ANALYSIS_CACHE_MINUTES | - | 기본 30 | 같은 값 |
 | DATA_POLL_MINUTES | - | 보유 | 보유 (같은 값) |
@@ -112,6 +115,7 @@ OpenAI/Naver/Finnhub 키가 비어 있으면 경고만 남긴다. OpenAI 채팅�
 | FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST | - | 비움 | 비움 |
 
 Firebase 웹 projectId는 서버의 FIREBASE_PROJECT_ID와 같은 프로젝트여야 한다.
+Naver 신규 신청은 NAVER Cloud의 NAVER API HUB 검색 API에서 한다. `NAVER_API_MODE=api_hub`는 API Gateway 주소와 `X-NCP-APIGW-API-KEY-ID`/`X-NCP-APIGW-API-KEY` 헤더를 사용한다. 2026-07-31 이전 개발자센터 키는 `legacy`를 명시한다. 기존 키는 2027-06-30 종료 예정이며 두 종류의 자격은 호환되지 않는다. [공식 이전 안내](https://guide.ncloud-docs.com/docs/apihub-migration), [뉴스 API 규격](https://api.ncloud-docs.com/docs/naver-api-hub-search-news) 참조.
 서비스 계정 JSON, OpenAI 키, Discord 웹후크를 Vercel/FIREBASE_WEB_CONFIG_JSON에 넣지 않는다.
 빌드 스크립트는 서비스 계정 키 형태가 들어오면 실패한다.
 Render 환경변수에는 `.env`의 따옴표로 감싸기 전 JSON 원문을 한 줄로 입력하고, PEM 안 줄바꿈은 JSON의 `\n` 형태로 보존한다. Render Secret File을 쓸 경우 각 서비스에 별도 마운트하고 `GOOGLE_APPLICATION_CREDENTIALS`를 해당 절대 경로로 설정한 뒤 JSON 변수는 제거한다. 파일은 Git에 넣지 않는다.
