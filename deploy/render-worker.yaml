@@ -1,0 +1,47 @@
+# OPTIONAL PAID SERVICE. Create a separate Blueprint with this path explicitly.
+# Root directory remains the repository root (not deploy/).
+# Use the same Firebase project/credentials and provider values as the API.
+services:
+  - type: worker
+    name: stock-market-assistant-discord-worker
+    runtime: python
+    plan: starter
+    numInstances: 1
+    buildCommand: pip install -r requirements.lock
+    startCommand: python -m jobs.check_config --component worker && exec python -m jobs.tick --loop --interval 60
+    maxShutdownDelaySeconds: 300
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: APP_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: ALLOWED_USER_UIDS
+        sync: false
+      - key: JOB_OWNER_UID
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: DATA_POLL_MINUTES
+        value: "5"
+      - key: NEWS_CACHE_MINUTES
+        value: "30"
+      - key: SENTIMENT_CACHE_MINUTES
+        value: "30"
+      - key: ANALYSIS_CACHE_MINUTES
+        value: "30"

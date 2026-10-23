@@ -1,10 +1,12 @@
+# Free API only. Optional paid Discord worker: deploy/render-worker.yaml.
+# Never put secret values here. sync:false values are entered in the dashboard.
 services:
   - type: web
     name: stock-market-assistant-api
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.lock
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: python -m jobs.check_config --component api && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
@@ -27,6 +29,8 @@ services:
         sync: false
       - key: JOB_OWNER_UID
         sync: false
+      - key: DATA_POLL_MINUTES
+        value: "5"
       - key: NAVER_CLIENT_ID
         sync: false
       - key: NAVER_CLIENT_SECRET
