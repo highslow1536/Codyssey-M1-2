@@ -1,0 +1,6 @@
+# Upload only the vanilla frontend and its build configuration via Vercel CLI.
+/*
+!frontend
+!vercel.json
+frontend/dist/
+frontend/tests/

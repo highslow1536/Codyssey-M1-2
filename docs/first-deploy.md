@@ -4,7 +4,7 @@
 
 이번 배포는 사용자가 지정한 [GitHub 저장소](https://github.com/highslow1536/Codyssey-M1-2)와 새 Firebase 프로젝트를 사용한다. Discord 워커는 먼저 로컬에서 검증하며 유료 Render 워커는 생성하지 않는다.
 
-현재 `codyssey-m1-2-z6456f` 프로젝트·싱가포르(`asia-southeast1`)의 기본 Firestore Native DB·웹 앱을 생성했다. Firestore 규칙·인덱스를 배포했고 `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_CONFIG_JSON`은 로컬 `.env`에 저장했다. 이 프로젝트에서 다음으로 준비할 항목은 Authentication 제공자·테스트 사용자 UID·서버 자격 파일이다. 아래 생성 절차는 다른 환경을 새로 구성할 때도 사용할 수 있다.
+현재 `codyssey-m1-2-z6456f` 프로젝트·싱가포르(`asia-southeast1`)의 기본 Firestore Native DB·웹 앱을 생성했다. Firestore 규칙·인덱스를 배포했고 `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_CONFIG_JSON`은 로컬 `.env`에 저장했다. 이메일 로그인과 입력된 UID의 활성 상태를 실제 확인했다. Google 제공자는 아직 없고, 서버 자격 파일은 macOS 접근 권한 문제로 읽지 못했다. Vercel·Render CLI 인증과 Vercel 프로젝트 연결은 완료했다. 확보한 운영 도메인 `codyssey-m1-2-gold.vercel.app`도 Firebase에 승인했지만 앱은 아직 배포하지 않았다. 아래 생성 절차는 다른 환경을 새로 구성할 때도 사용할 수 있다.
 
 ## 1. Firebase — 이 항목부터 준비
 
@@ -31,6 +31,8 @@ FIREBASE_AUTH_EMULATOR_HOST=
 FRONTEND_AUTH_EMULATOR_URL=
 ```
 
+macOS가 파일 읽기를 차단하면 사용자가 JSON을 프로젝트의 `credentials/` 폴더로 직접 복사하고 `GOOGLE_APPLICATION_CREDENTIALS`를 그 파일의 절대 경로로 변경할 수 있다. 예: `/absolute/path/to/project/credentials/firebase-service-account.json`. 이 폴더는 Git과 Vercel CLI 업로드에서 제외한다. 복사 후 파일 권한을 `600`으로 제한하고, 키 내용을 채팅이나 문서에 붙여 넣지 않는다.
+
 서버 키 JSON과 웹 config는 서로 다른 자료다. 서버 JSON을 웹 config에 넣지 않는다. 서버 자격 형식과 프로젝트 일치 여부를 로컬에서 먼저 검사하고, 실제 DB 권한은 이후 클라우드 왕복으로 확인한다. [서버 자격 공식 안내](https://firebase.google.com/docs/admin/setup)
 
 소규모 검증은 Spark 무료 할당량부터 사용한다. 기능이나 사용량 때문에 유료 플랜이 필요하다는 안내가 나오면 전환 전에 요금을 확인한다. [Firebase 요금제](https://firebase.google.com/docs/projects/billing/firebase-pricing-plans)
@@ -39,6 +41,7 @@ FRONTEND_AUTH_EMULATOR_URL=
 
 - GitHub에서 기존 저장소를 사용할지, 새 비공개 저장소를 만들지 정한다. 기존 저장소라면 URL만 공유한다. 푸시 전에 실제 키·`.env`·서비스 계정 파일이 추적되지 않는지 확인한다.
 - [Vercel](https://vercel.com/signup)·[Render](https://dashboard.render.com/register)에 가입하거나 로그인한다. 개인 무료 플랜으로 시작한다. CLI가 연 인증 페이지에서는 본인이 계정을 확인하고 연결을 승인한다. 계정 토큰을 채팅에 복사할 필요가 없다.
+- Vercel이 기기 코드를 요구하면 **현재 실행 중인 `vercel login` 터미널에 표시된 코드**를 입력한다. Firebase UID나 API 키를 입력하는 단계가 아니다. 코드가 만료되면 로그인을 다시 실행해 새 코드를 사용한다.
 - GitHub 앱 연결이 필요하면 이번 저장소만 선택한다. 이 연결은 계정 소유자가 브라우저에서 처리한다.
 - Vercel Production 주소를 확보한 뒤 Render API의 `ALLOWED_ORIGINS`를 정한다. Render API가 준비되면 Vercel에 `API_BASE_URL`과 `FIREBASE_WEB_CONFIG_JSON`을 입력해 배포한다. Vercel에는 서버 키를 업로드하지 않는다.
 - Firebase Authentication → Settings → Authorized domains에 **실제 Vercel Production 호스트명**을 추가한다. `https://`나 경로는 넣지 않는다. 로컬 브라우저 검증도 할 경우 `localhost`를 명시적으로 추가한다.

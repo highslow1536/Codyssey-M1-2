@@ -191,3 +191,12 @@ Firebase 클라우드 자격·뉴스 키·OpenAI 키·Discord 웹후크는 아�
 - 변경한 Render API 설정은 현재 공식 Blueprint JSON Schema를 통과했다. `firebase.json`의 JSON·Prettier 검사와 `git diff --check`도 통과했다. 앱 코드는 바꾸지 않아 기존 전체 단위 검사를 반복하지 않았다.
 
 Authentication 제공자·테스트 사용자 UID·서버 서비스 계정 파일은 아직 입력 대기다. Vercel·Render CLI도 브라우저 인증 대기이며 앱 배포는 하지 않았다. 클라우드 데이터 CRUD·사용자 로그인·뉴스·AI·Discord 수신은 다음 단계에서 실제 자격과 함께 검증한다.
+
+## 배포 계정 연결과 Firebase 인증 설정 확인 (2026-10-23)
+
+- Vercel·Render CLI의 기기 인증을 완료했다. Vercel Hobby 팀의 `codyssey-m1-2` 프로젝트를 생성하고 현재 작업 폴더에 연결했다. 실제 조회된 운영 도메인은 `codyssey-m1-2-gold.vercel.app`이며 아직 웹 앱 배포는 없다. 프로젝트는 Node `24.x`, 시스템 환경변수 노출 활성 상태다. Vercel 운영 환경에는 공개 `FIREBASE_WEB_CONFIG_JSON`만 등록했고 서버 자격은 보내지 않았다.
+- Firebase CLI의 기존 사용자 인증으로 해당 운영 도메인을 승인 목록에 추가한 후 다시 읽어 확인했다. 기존 승인 도메인도 보존했다. 이메일/비밀번호 제공자가 활성 상태이며 `.env`의 작업 소유 UID가 실제 활성 이메일 사용자임을 확인했다. Google 제공자 설정 조회는 **404**로 아직 등록되지 않았다. 이 검사는 실제 브라우저 로그인이나 서버 서비스 계정의 권한 검증을 의미하지 않는다. 증빙: `artifacts/firebase-auth-domain-live.json`, `artifacts/firebase-auth-settings-live.json`.
+- Render 워크스페이스 선택과 `render blueprints validate render.yaml --output json`이 성공했다(`valid: true`, 무료 API 한 개). 기존 서비스가 없는 것을 확인했고 API·유료 워커 서비스는 아직 생성하지 않았다.
+- `.vercelignore`에 프런트와 `vercel.json`만 허용했다. 실제 `vercel deploy --dry --json`은 파일 항목 **17개**를 반환했고 `.env`·`.env.local`·서버 코드·`credentials/`·검증 산출물이 제외됐다. 업로드나 배포는 발생하지 않았다. 증빙: `artifacts/deployment/vercel-dry-run.json`. Vercel CLI가 추가한 중복 Git 제외 규칙은 기존 규칙으로 충분해 제거했고, 생성된 로컬 토큰 파일은 Git 제외 및 권한 `600`을 확인했다.
+
+사용자가 입력한 서버 자격 경로는 일반 실행과 승인된 실행 모두 macOS의 `Operation not permitted`로 차단됐다. OS 권한을 우회하지 않고 사용자가 Git 제외 `credentials/`에 직접 복사하도록 안내했다. 이 시점에 해당 폴더의 JSON 파일은 없으며 실제 서비스 계정 검증·Firestore 데이터 저장·Render API·Vercel 웹 배포는 대기 중이다. Naver·Finnhub·OpenAI·Discord 키도 미입력이어서 해당 실제 연동은 검증하지 않았다. 설정·문서 변경 범위에서 실제 CLI 검증과 `git diff --check`를 수행했으며 앱 단위 검사는 반복하지 않았다.

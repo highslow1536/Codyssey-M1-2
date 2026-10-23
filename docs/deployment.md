@@ -41,6 +41,8 @@ Vercel 쪽 리전 설정은 신경 쓰지 않는다.
 - Node.js: 공식 지원 버전 중 24.x 또는 22.x를 사용한다. 24.x가 기본값이며 22.x도 정식 지원된다.
 - Environment Variables의 **Enable access to System Environment Variables**를 켜서 빌드에 `VERCEL_ENV`가 전달되게 한다. 운영·프리뷰 검사는 이 값을 사용한다. [Vercel 시스템 변수](https://vercel.com/docs/environment-variables/system-environment-variables) 참조.
 
+Vercel CLI 업로드에는 루트 `.vercelignore`가 프런트와 `vercel.json`만 허용한다. 배포 전에 `vercel deploy --dry --json`으로 업로드 목록을 확인한다. `.env`·`credentials/`·서버 코드와 로컬 검증 산출물은 포함하지 않는다. Git 연결 배포에서도 비밀 파일을 커밋하지 않는 원칙은 동일하다. [Vercel 파일 제외 설정](https://vercel.com/docs/deployments/vercel-ignore)
+
 빌드 스크립트는 공개 키 3개(API_BASE_URL, FIREBASE_WEB_CONFIG_JSON, FRONTEND_AUTH_EMULATOR_URL)만 읽어
 frontend/dist/config.js를 생성한다. 프로덕션/프리뷰 빌드는 API 주소가 https의 localhost가 아닌 값이고
 Firebase 웹 설정이 들어 있으며 에뮬레이터 URL이 비어 있어야 한다. 공개되는 설정은 허용된 3개 키 그대로다.
