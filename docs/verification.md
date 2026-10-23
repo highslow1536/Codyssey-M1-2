@@ -149,3 +149,20 @@ Discord 어댑터는 공식 [Execute Webhook](https://docs.discord.com/developer
 
 - 사용자의 실제 AI 채팅 호스트 설정 등록·대화, 클라우드 Firestore 자격과 인덱스, Naver/Finnhub 실제 키, 실제 Discord 웹훅 수신은 이번 검증에 포함하지 않았다. SDK 클라이언트 확인과 실제 AI 호스트 대화를 구분한다.
 - 실행·연결 예시와 호스트별 제약은 [MCP 안내](mcp.md), 필요한 변수는 `.env.example`에 있다. 별도 MCP 서버 포트·OpenAI 키는 필요하지 않다.
+
+## Vercel·Render 배포 준비 검증 (2026-10-23)
+
+루트 `render.yaml`은 Free API만 생성하며, 선택 유료 Discord 워커는 `deploy/render-worker.yaml`로 분리했다. 두 시작 명령은 `jobs.check_config`의 오프라인 설정 검사 후 `exec`로 실제 프로세스를 실행한다. Vercel은 의존성 설치 없이 정적 화면만 빌드하며, 운영·프리뷰에서는 HTTPS API·Firebase 웹 설정을 요구하고 인증 에뮬레이터를 거부한다. 서비스별 변수·Firebase 도메인·워커 운영 절차는 [배포 런북](deployment.md)에 있다.
+
+- Python **329개 통과**(단위 267·Firestore 통합 62), Node **37개 통과**. 서비스 계정의 실제 PEM 파싱·프로젝트 불일치, CORS 주소·에뮬레이터 거부, 비밀값 없는 오류 출력, 워커 소유자·웹훅, 종료 신호·작업 오류 후 계속 처리를 검사했다.
+- 통합 검사 후 CLI를 실행할 때 활성 gRPC 스레드의 fork 진단이 stderr에 섞이는 문제를 발견했다. CLI 검사를 `posix_spawn` 가능한 방식으로 격리했고, stderr 무출력과 비밀값 비노출 단언을 유지한 채 전체 검사를 통과했다.
+- ruff 검사·포맷, compileall, 변경 JS/JSON의 Prettier, `git diff --check` 통과. 새 실행 의존성은 추가하지 않았다.
+- Render 두 Blueprint는 [공식 JSON Schema](https://render.com/schema/render.yaml.json)로 검증했다. Vercel의 선언 필드도 [공식 스키마](https://openapi.vercel.sh/vercel.json) 기준 오류가 없었다. 다만 현재 Vercel 스키마 자체의 미사용 `functions.*.experimentalTriggers` 정의가 Draft 4 메타 스키마 검사를 실패해, 전체 스키마 자체의 유효성 통과로 보고하지 않는다. 설정 검사는 해당 스키마의 Draft 4 validator로 수행했다.
+- `uv pip install --dry-run --python-platform x86_64-manylinux_2_28 --python-version 3.12 --only-binary :all: --target /private/tmp/codyssey-render-deps -r requirements.lock`으로 Linux 대상 **86개** 의존성이 해결됨을 확인했다. 이는 설치 가능성 검사이며 실제 Render 빌드가 아니다.
+- 배포용 API 시작 명령을 로컬에서 그대로 실행했다. 즉석 생성한 테스트 서비스 계정으로 PEM 검사만 수행하고, 실제 HTTP에서 `/healthz` 200·보호 API 401·허용 CORS 200·미등록 CORS 400을 확인했다. Firebase 인증·DB 호출은 하지 않았다.
+- 워커는 고유한 빈 소유자를 둔 `demo-stock-assistant` 로컬 에뮬레이터에서 두 서비스 틱을 실행했다. 3,600초 대기 중 SIGTERM을 보내 **약 0.12초**, 종료 코드 0·`tick_shutdown` 로그를 확인했다. 단위 검사에서는 진행 중 서비스 완료 후 다음 작업을 시작하지 않는 동작도 확인했다. 클라우드·시세 공급원·Discord 요청은 없었다.
+- 실제 프런트 CLI의 운영 빌드 성공, API 주소 누락 시 종료 코드 1, 실패 시 직전 출력 보존, 로컬 미설정 빌드를 확인했다. 테스트 값은 빌드 검사용이며 시장 자료로 사용하지 않았다. UI 자체는 변경하지 않아 브라우저 화면 검사를 반복하지 않았다.
+
+로컬 증빙은 무시 경로 `artifacts/deployment/`의 `schema-validation.json`, `startup-smoke.json`, `frontend-build.json`과 시작·종료 로그에 있다. 검증에 사용한 로컬 서버·에뮬레이터는 종료했다.
+
+실제 Vercel/Render 배포, Firebase 승인 도메인·클라우드 규칙·인덱스 변경, 실제 자격 권한, Google 로그인, 뉴스 키·OpenAI·Discord 실연동은 수행하지 않았다. `/healthz`와 오프라인 사전 검사로 이 항목들을 검증했다고 해석하지 않는다.

@@ -2,7 +2,7 @@
 
 Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약으로 답하는 AI 비서를 개발합니다. 전체 설계는 [프로젝트 설계서](docs/project-design.md)에 있습니다.
 
-현재 **과제 필수 API·바닐라 웹 UI·뉴스·시장 지표·Discord 정기 브리핑·조건부 가격 알림·외부 MCP 서버**를 구현했습니다.
+현재 **과제 필수 API·바닐라 웹 UI·뉴스·시장 지표·Discord 정기 브리핑·조건부 가격 알림·외부 MCP 서버**를 구현했고, Vercel·Render 배포 설정과 운영 절차를 준비했습니다.
 
 ## 구현 범위
 
@@ -357,13 +357,26 @@ uv sync --locked --extra dev
 
 가격 알림의 실제 감시·Discord 전송에는 같은 UID를 설정한 별도 `jobs.tick` worker가 필요합니다. MCP는 API 서버나 worker를 자동으로 시작하지 않습니다. HTTP 주소만 받는 원격 호스트용 서버는 아직 제공하지 않습니다.
 
-## 배포와 다음 단계
+## 배포 준비
 
-`render.yaml`은 백엔드 배포 설정입니다. 아직 배포하지 않았습니다. Render의 환경변수에는 `.env.example` 중 서버 필수 항목을 입력하고, 에뮬레이터 변수는 설정하지 않습니다. `/healthz` 정상만으로 Firebase·OpenAI 연동 완료를 의미하지 않습니다. 실제 API 호출도 확인하세요.
+서비스 생성 순서, 환경변수 표, Firebase 도메인·규칙·인덱스, Discord 워커 운영과 배포 후 점검은 [배포 런북](docs/deployment.md)에 정리했습니다. 실제 클라우드 배포는 아직 수행하지 않았습니다.
 
-`vercel.json`은 프로젝트 루트에서 `node frontend/scripts/build.mjs`를 실행하고 `frontend/dist`를 배포하도록 구성했습니다. Vercel에는 `API_BASE_URL`과 `FIREBASE_WEB_CONFIG_JSON`만 넣습니다. 서버 키·서비스 계정·Discord 웹훅은 Render에만 저장합니다. 빌드는 공개 설정 세 항목과 Firebase 웹 구성의 허용된 필드만 출력하며 서비스 계정 입력은 거부합니다. Google 로그인에는 Vercel 도메인 승인도 필요합니다. 배포는 아직 수행하지 않았습니다.
+| 구성 | 설정 | 동작 |
+| --- | --- | --- |
+| 프런트 | `vercel.json` | 저장소 루트에서 빌드, `frontend/dist` 정적 배포, `config.js` 캐시 금지 |
+| API | `render.yaml` | Free 웹 서비스, 설정 사전 검사 후 uvicorn 실행, `/healthz` |
+| Discord 워커 | `deploy/render-worker.yaml` | 별도 선택형 유료 Starter 워커, 60초 루프, 종료 유예 300초 |
 
-다음 단계는 Vercel·Render 통합 배포와 실제 키·웹훅을 사용한 최종 연결 확인입니다.
+Vercel에는 공개 `API_BASE_URL`·`FIREBASE_WEB_CONFIG_JSON`만 입력합니다. 운영·프리뷰 빌드는 HTTPS API 주소·Firebase 웹 설정 누락이나 인증 에뮬레이터 사용을 거부합니다. 서버 자격과 웹훅은 Render에만 저장합니다. Firebase 승인 도메인에는 Vercel 호스트명을, Render CORS에는 정확한 `https://호스트명`을 등록합니다.
+
+프로덕션 값을 `.env`에 채운 뒤 아래 명령으로 네트워크 호출 없이 필수 설정·서비스 계정 PEM·프로젝트 일치를 검사할 수 있습니다. Render 시작 명령도 같은 검사를 실행합니다.
+
+```bash
+APP_ENV=production .venv/bin/python -m jobs.check_config --component api
+APP_ENV=production .venv/bin/python -m jobs.check_config --component worker
+```
+
+Render Free API는 유휴 시 정지하므로 예약 작업은 별도 워커가 담당합니다. 비용 없이 과제를 시연하려면 항상 켜진 로컬 머신에서 `python -m jobs.tick --loop --interval 60`을 실행할 수 있습니다. 1회 tick도 실제 전송을 수행하므로 실행 전에 목적지와 대기열을 확인하세요. `/healthz`와 사전 검사 통과는 Firebase·OpenAI·Discord의 실제 권한·연결 확인을 대신하지 않습니다.
 
 | 제출 항목 | 상태 |
 | --- | --- |
@@ -375,4 +388,5 @@ uv sync --locked --extra dev
 | Discord 정기 브리핑 | 구현, 예약·큐·웹 이력 검증; 실제 웹훅 수신 확인은 설정 후 필요 |
 | 조건부 가격 알림 | 구현, 실제 5분 봉 수집·원자적 상태·전송 worker·웹 관리 검증; 실제 Discord 수신은 설정 후 필요 |
 | 외부 MCP | stdio 도구 16개 구현; SDK 클라이언트·실제 Yahoo 검증, 실제 AI 호스트 대화 확인은 설정 후 필요 |
+| 배포 설정·운영 문서 | Vercel·Render API·선택 워커 구성, 로컬 시작·CORS·종료 검증 완료 |
 | 배포 URL | Vercel·Render 배포 전 |
