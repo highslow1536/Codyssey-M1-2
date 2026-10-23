@@ -1,8 +1,9 @@
 // Build script for the vanilla frontend (Node >= 22, no dependencies).
-// Only three root env keys are ever read (public allowlist):
+// Only three env keys become public configuration (allowlist):
 //   API_BASE_URL, FIREBASE_WEB_CONFIG_JSON, FRONTEND_AUTH_EMULATOR_URL
+// VERCEL_ENV controls deployment validation and is never emitted.
 // Output: frontend/dist/ with index.html, styles.css, js/ (when present) and generated config.js.
-// Missing Firebase config is allowed: config.js then carries firebase:null (setup state).
+// Local builds allow missing Firebase config (setup state); Vercel builds fail closed.
 // Never removes anything outside dist. Run directly: node frontend/scripts/build.mjs
 
 import { cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
@@ -103,8 +104,9 @@ export function isLocalhostUrl(raw) {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
   return (
     parsed.hostname === "localhost" ||
+    parsed.hostname.endsWith(".localhost") ||
     parsed.hostname === "127.0.0.1" ||
-    parsed.hostname === "::1"
+    parsed.hostname === "[::1]"
   );
 }
 
@@ -172,11 +174,30 @@ export function resolvePublicConfig(input) {
       );
     }
   }
-  return {
+  const config = {
     apiBaseUrl: apiBaseUrl,
     firebase: parseFirebaseWebConfig(publicEnv.FIREBASE_WEB_CONFIG_JSON),
     authEmulatorUrl: authEmulatorUrl,
   };
+  const deploymentEnv = (opts.env || process.env).VERCEL_ENV;
+  if (deploymentEnv === "production" || deploymentEnv === "preview") {
+    if (
+      !apiBaseUrl ||
+      new URL(apiBaseUrl).protocol !== "https:" ||
+      isLocalhostUrl(apiBaseUrl)
+    ) {
+      throw new Error("Vercel 배포에는 외부 HTTPS API_BASE_URL이 필요합니다.");
+    }
+    if (!config.firebase) {
+      throw new Error("Vercel 배포에는 FIREBASE_WEB_CONFIG_JSON이 필요합니다.");
+    }
+    if (authEmulatorUrl) {
+      throw new Error(
+        "Vercel 배포에서는 인증 에뮬레이터를 사용할 수 없습니다.",
+      );
+    }
+  }
+  return config;
 }
 
 export async function build(input) {
