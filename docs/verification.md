@@ -169,7 +169,7 @@ Discord 어댑터는 공식 [Execute Webhook](https://docs.discord.com/developer
 
 ## 첫 실제 연동 준비와 공급원 재확인 (2026-10-23)
 
-Git에서 제외되는 로컬 `.env`를 권한 `600`으로 준비했다. GitHub CLI 인증은 확인했지만 Git 원격 저장소는 아직 연결하지 않았다. Vercel CLI 65.1.0과 SHA-256을 확인한 공식 Render CLI 2.31.0을 저장소 밖 임시 디렉터리에 준비했다. 클라우드 배포는 사용자 계정 인증·Firebase 자격 입력 이후에 진행한다.
+Git에서 제외되는 로컬 `.env`를 권한 `600`으로 준비했다. GitHub CLI 인증을 확인하고 [비공개 배포 저장소](https://github.com/highslow1536/Codyssey_M1-2)를 생성해 `main` 브랜치를 푸시했다. 업로드 전에 추적 파일 140개와 기존 이력의 blob 206개에서 주요 자격 패턴을 검사했고 발견은 없었다. 이 패턴 검사가 모든 형태의 비밀값 부재를 보장하는 것은 아니다. `.env`가 Git에서 제외됨도 확인했다. Vercel CLI 65.1.0과 SHA-256을 확인한 공식 Render CLI 2.31.0을 저장소 밖 임시 디렉터리에 준비했다. 클라우드 앱 배포는 사용자 계정 인증·Firebase 자격 입력 이후에 진행한다.
 
 - Yahoo를 실제 재호출해 삼성전자 **245건**(2025-10-23~2026-10-23), AAPL·VIX **각 251건**(2025-10-23~2026-10-22)의 완료 일봉을 읽었다. `--fetch-only` 실행으로 **DB 쓰기는 하지 않았다**. 증빙: `artifacts/deployment-yahoo-real.json`.
 - CNN을 실제 재호출해 **252개** 과거 관측과 현재 스냅샷을 읽었다. 관측 시각은 `2026-10-23T11:38:37Z`, 수집 시각은 `2026-10-23T11:56:27Z`였다. 값은 당시 응답이며 고정 시연값이 아니다. 증빙: `artifacts/deployment-cnn-real.json`.
