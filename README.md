@@ -2,7 +2,13 @@
 
 Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약으로 답하는 AI 비서를 개발합니다. 전체 설계는 [프로젝트 설계서](docs/project-design.md)에 있습니다.
 
-현재 **과제 필수 API·바닐라 웹 UI·뉴스·시장 지표·Discord 정기 브리핑·조건부 가격 알림·외부 MCP 서버**를 구현했고, Vercel·Render 배포 설정과 운영 절차를 준비했습니다.
+**마켓노트**는 Vercel과 Render에서 운영 중입니다. 로그인 후 실제 시세와 한·미 뉴스, Codyssey AI 채팅, Discord 브리핑 이력과 가격 알림을 확인할 수 있습니다.
+
+| 운영 주소 | 용도 |
+| --- | --- |
+| [마켓노트 웹](https://codyssey-m1-2-gold.vercel.app/) | 로그인, 데이터 조회, 채팅, 뉴스·알림 |
+| [Render API](https://stock-market-assistant-api.onrender.com) · [헬스 체크](https://stock-market-assistant-api.onrender.com/healthz) | 백엔드 주소와 응답 상태 |
+| [Swagger UI](https://stock-market-assistant-api.onrender.com/docs) · [OpenAPI JSON](https://stock-market-assistant-api.onrender.com/openapi.json) | API 명세와 인증을 사용한 호출 확인 |
 
 실제 계정·키 준비는 [첫 배포 안내](docs/first-deploy.md), 서비스별 설정과 운영은 [배포 런북](docs/deployment.md)을 따릅니다.
 
@@ -13,10 +19,16 @@ Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약�
 - 한국·미국 9개 종목·지수의 실제 완료 일봉 수집. 거래일·조기 폐장·UTC 기준 시각, 원래 종가와 조정 종가 보존.
 - `instruments`·`market_bars` 원본과 수정 가능한 사용자 `data` 분리, 중복 방지·revision 충돌 검사.
 - 데이터 CRUD·전체 필터 요약, 대화 저장·목록·메시지 페이지 조회·하위 문서 삭제.
-- 서버 요약을 주입하는 OpenAI Responses 채팅, 자동 저장·재시도·동시 요청 제한, `summarize_dataset`·`search_news`·`get_us_sentiment`·`get_market_analysis` 도구.
+- 서버 요약을 주입하는 AI 채팅(Codyssey Chat Completions 또는 OpenAI Responses), 자동 저장·재시도·동시 요청 제한, `summarize_dataset`·`search_news`·`get_us_sentiment`·`get_market_analysis` 도구.
 - 프레임워크 없는 HTML/CSS/JS 화면: Firebase 이메일 로그인, 실제 Yahoo 수집, CRUD·기간 전체 요약·목록 차트, AI 채팅과 대화 기록 복원, 모바일 화면.
 
 시장 브리핑 화면에서 원본 지표·뉴스 요약·미국 시장 심리를 확인할 수 있습니다. 가격 알림은 별도의 실제 정규장 5분 봉 종가를 사용합니다. 일봉의 `event_time`은 거래소 세션 종료 시각이고 `fetched_at`은 공급원 수집 시각입니다. 데이터가 없거나 외부 호출이 실패하면 가짜 값으로 대체하지 않습니다.
+
+## 운영 채팅 화면
+
+Codyssey의 실제 답변입니다. `summarize_dataset`으로 S&P 500 저장 데이터 251건을 확인했고, 마지막 관측일인 2026년 10월 22일의 수정 종가 7,663.43포인트가 Firestore 요약과 일치했습니다. 아래 화면은 저장된 대화를 다시 열어 캡처했으며, 출처 링크와 도구 성공 기록도 함께 복원됐습니다.
+
+![운영 웹에서 복원한 S&P 500 실제 답변과 Yahoo 출처, summarize_dataset 도구 기록](docs/screenshots/production-chat.png)
 
 ## 개발 환경
 
@@ -359,9 +371,11 @@ uv sync --locked --extra dev
 
 가격 알림의 실제 감시·Discord 전송에는 같은 UID를 설정한 별도 `jobs.tick` worker가 필요합니다. MCP는 API 서버나 worker를 자동으로 시작하지 않습니다. HTTP 주소만 받는 원격 호스트용 서버는 아직 제공하지 않습니다.
 
-## 배포 준비
+2026년 11월 15일, 웹 채팅과 별개인 **Codex CLI 채팅**에서 `get_price_history`와 `calculate_indicators`를 실제로 호출했습니다. 애플의 11월 9~13일 일봉 5개, 마지막 거래일(11월 13일) 수정 종가 356.27 USD, Wilder RSI(14) 61.04가 도구 결과와 채팅 답변에서 일치했습니다. [MCP 호스트 연결 및 검증 기록](docs/mcp.md#codex-cli-채팅-검증)
 
-서비스 생성 순서, 환경변수 표, Firebase 도메인·규칙·인덱스, Discord 워커 운영과 배포 후 점검은 [배포 런북](docs/deployment.md)에 정리했습니다. 실제 클라우드 배포는 아직 수행하지 않았습니다.
+## 운영 배포
+
+서비스 생성 순서, 환경변수 표, Firebase 도메인·규칙·인덱스, Discord 워커 운영과 배포 후 점검은 [배포 런북](docs/deployment.md)에 정리했습니다.
 
 | 구성 | 설정 | 동작 |
 | --- | --- | --- |
@@ -369,7 +383,7 @@ uv sync --locked --extra dev
 | API | `render.yaml` | Free 웹 서비스, 설정 사전 검사 후 uvicorn 실행, `/healthz` |
 | Discord 워커 | `deploy/render-worker.yaml` | 별도 선택형 유료 Starter 워커, 60초 루프, 종료 유예 300초 |
 
-Vercel에는 공개 `API_BASE_URL`·`FIREBASE_WEB_CONFIG_JSON`만 입력합니다. 운영·프리뷰 빌드는 HTTPS API 주소·Firebase 웹 설정 누락이나 인증 에뮬레이터 사용을 거부합니다. 서버 자격과 웹훅은 Render에만 저장합니다. Firebase 승인 도메인에는 Vercel 호스트명을, Render CORS에는 정확한 `https://호스트명`을 등록합니다.
+Vercel에는 공개 `API_BASE_URL`·`FIREBASE_WEB_CONFIG_JSON`만 입력합니다. 운영·프리뷰 빌드는 HTTPS API 주소·Firebase 웹 설정 누락이나 인증 에뮬레이터 사용을 거부합니다. 서버 키는 Render 비공개 설정에 두고, 로컬 워커용 웹훅은 Git에서 제외한 로컬 `.env`에 둡니다. Firebase 승인 도메인에는 Vercel 호스트명을, Render CORS에는 정확한 `https://호스트명`을 등록합니다.
 
 프로덕션 값을 `.env`에 채운 뒤 아래 명령으로 네트워크 호출 없이 필수 설정·서비스 계정 PEM·프로젝트 일치를 검사할 수 있습니다. Render 시작 명령도 같은 검사를 실행합니다.
 
@@ -382,13 +396,14 @@ Render Free API는 유휴 시 정지하므로 예약 작업은 별도 워커가 
 
 | 제출 항목 | 상태 |
 | --- | --- |
-| 백엔드 필수 API | 구현, 로컬 검증 결과는 `docs/verification.md` 참조 |
-| 실제 Yahoo 수집·Firestore 저장 | 수집기 구현, 로컬 에뮬레이터 검증; 클라우드는 자격 설정 후 확인 |
-| 실제 OpenAI 답변 | 연동 구현, API 키·모델 지정 후 실호출 필요 |
-| 바닐라 웹 UI·화면 증빙 | 구현, 로컬 데스크톱·모바일 검증 및 `artifacts/web-*.png` |
-| 뉴스·시장 심리·기술 지표 | 구현, Yahoo·CNN 실호출 및 로컬 저장 검증; Naver·Finnhub는 키 발급 후 실호출 필요 |
-| Discord 정기 브리핑 | 구현, 예약·큐·웹 이력 검증; 실제 웹훅 수신 확인은 설정 후 필요 |
-| 조건부 가격 알림 | 구현, 실제 5분 봉 수집·원자적 상태·전송 worker·웹 관리 검증; 실제 Discord 수신은 설정 후 필요 |
-| 외부 MCP | stdio 도구 16개 구현; SDK 클라이언트·실제 Yahoo 검증, 실제 AI 호스트 대화 확인은 설정 후 필요 |
-| 배포 설정·운영 문서 | Vercel·Render API·선택 워커 구성, 로컬 시작·CORS·종료 검증 완료 |
-| 배포 URL | Vercel·Render 배포 전 |
+| 백엔드 필수 API | 운영 이메일 로그인, 인증된 조회, 데이터 CRUD·요약 검증 |
+| 실제 Yahoo 수집·Firestore 저장 | 운영 Firestore에 9개 종목·지수의 일봉 2,233건 저장 확인 |
+| 실제 AI 답변·대화 기록 | Codyssey 답변, 실제 데이터와 수치 대조, 도구 성공 기록, 새로고침 후 복원 검증 |
+| 바닐라 웹 UI·화면 증빙 | [운영 채팅 스크린샷](docs/screenshots/production-chat.png), 로컬 데스크톱·모바일 검사 완료 |
+| 뉴스·시장 심리·기술 지표 | Yahoo·CNN 실제 조회, Naver·Finnhub 기사·원문·Codyssey 한국어 요약 운영 확인 |
+| Discord 정기 브리핑 | 로컬 워커에서 테스트 채널 예약 발송 1건, 메시지 ID·본문과 웹 이력 일치 확인 |
+| 조건부 가격 알림 | 실제 5분 봉 수집과 감시 로직 검증, 정규장 조건 충족 후 Discord 실수신 확인 대기 |
+| 외부 MCP | stdio 도구 16개 등록 확인, Codex CLI 채팅에서 Yahoo 일봉·기술 지표 도구 실제 호출 확인 |
+| 배포 | Vercel 웹, Render API·Swagger, Firebase 운영 연결 확인 |
+
+항목별 검증 자료와 확인하지 못한 범위는 [검증 기록](docs/verification.md)에 있습니다.

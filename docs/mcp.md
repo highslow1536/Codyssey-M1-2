@@ -54,6 +54,25 @@ Claude Desktop의 `claude_desktop_config.json` 또는 Cursor의 `.cursor/mcp.jso
 
 로컬 단일 사용자 서버이므로 이 프로세스를 사용하는 호스트는 지정한 사용자 데이터에 접근한다. 여러 사람에게 네트워크로 공개하는 인증 서버로 사용하지 않는다.
 
+### Codex CLI 채팅 검증
+
+프로젝트 루트에서 로그인된 Codex CLI에 로컬 서버를 등록한다. 다음 새 채팅에서 사용할 수 있으며, 등록 정보에는 주소가 아닌 서버 실행 경로와 인수만 들어간다.
+
+```bash
+codex mcp add stock_market_assistant -- \
+  "$PWD/.venv/bin/python" -m mcp_adapter.server --env-file "$PWD/.env"
+codex mcp get stock_market_assistant
+```
+
+2026년 11월 15일, 별도 Codex CLI 채팅에서 아래 두 도구를 호출해 결과를 한국어로 정리하도록 요청했다. 호스트의 MCP 이벤트에서 두 호출이 실제 완료됐고, 채팅 답변의 값이 도구 응답과 일치했다.
+
+| 도구 | 입력 | 확인 결과 |
+| --- | --- | --- |
+| `get_price_history` | `NASDAQ_AAPL`, 2026-11-09~2026-11-13, `1d` | 일봉 5개. 마지막 거래일 2026-11-13, 수정 종가 356.27 USD |
+| `calculate_indicators` | `NASDAQ_AAPL`, 2026-08-01~2026-11-13, `1d` | 일봉 74개로 계산한 Wilder RSI(14) 61.04 |
+
+두 응답 모두 `quality_status: ok`이고 출처는 [Yahoo Finance AAPL](https://finance.yahoo.com/quote/AAPL)이었다. 관측 기준은 11월 13일 뉴욕 정규장 마감이며 실시간 호가가 아니다. 이 채팅에서는 조회·계산 도구만 검증했다.
+
 ## 도구 계약
 
 도구별 정확한 JSON 스키마는 MCP `tools/list`에서 확인할 수 있다. 알림 객체 내부까지 추가 필드를 거절한다.

@@ -219,3 +219,8 @@ Authentication 제공자·테스트 사용자 UID·서버 서비스 계정 파�
 로컬 증빙은 Git 제외 `artifacts/deployment/`의 `firebase-service-account-live.json`, `firestore-data-live.json`, `render-auth-smoke.json`, `render-crud-live.json`, `render-research-live.json`, `vercel-public-http.json`, `vercel-deployment.json`, `render-service.json`에 있다. 서버 설정 생성본과 private 원본 로그는 비밀값이 포함될 수 있으므로 공유하지 않는다.
 
 Naver·Finnhub·OpenAI·Discord 설정은 아직 비어 있다. 실제 뉴스 API는 `news_not_configured`와 빈 기사 목록을, 채팅은 **503 `model_not_configured`**를 반환했다. 실제 뉴스 기사·AI 답변·Discord 수신은 키 입력 후 남은 검증이며 합성 결과로 대체하지 않았다. 로컬 Discord 워커를 시작하거나 유료 Render 워커를 생성하지 않았다.
+
+## 외부 AI 채팅 MCP 연결 및 운영 화면 증빙 (2026-11-15 KST)
+
+- 별도 Codex CLI 채팅에 로컬 stdio MCP를 연결해 `get_price_history`, `calculate_indicators`를 직접 호출했다. 두 완료 이벤트에서 실제 Yahoo 응답과 출처를 확인했고, 애플 일봉 5개, 마지막 거래일 11월 13일의 수정 종가 356.27 USD, 14일 RSI 61.04가 채팅 답변과 일치했다. 별도 SDK 검사로는 도구 16개를 확인했다. 자세한 입력은 [MCP 연결 안내](mcp.md#codex-cli-채팅-검증)를 참고한다.
+- Vercel 웹과 Render의 `/healthz`, `/docs`, `/openapi.json`이 모두 HTTP 200을 반환했다. 기존 S&P 500 실제 답변을 운영 웹에서 복원해 값·도구 기록·출처를 다시 확인하고 [화면](screenshots/production-chat.png)을 캡처했다. 계정 정보와 다른 대화 목록은 캡처 범위에서 제외했다.
