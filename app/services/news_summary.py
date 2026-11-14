@@ -1,6 +1,7 @@
 """Cited Korean news digest, with an honest extractive mode when no model is available."""
 
 import json
+import logging
 import re
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,6 +17,7 @@ class NewsDigest(BaseModel):
 
 
 _CITATION = re.compile(r"\[([^\[\]]+)\]")
+logger = logging.getLogger(__name__)
 
 
 def _request_digest(client, settings, instructions, articles):
@@ -36,12 +38,12 @@ def _request_digest(client, settings, instructions, articles):
         response = client.chat.completions.create(
             model=settings.openai_model,
             store=False,
-            max_completion_tokens=2000,
+            max_completion_tokens=3000,
             messages=[
                 {
                     "role": "system",
                     "content": instructions
-                    + " 요약은 핵심 이슈 2~3개만 간단히 쓰고, 기사에 붙은 짧은 숫자 ID를 문자열로 인용하세요."
+                    + " 핵심 이슈를 두 문장 이내로 바로 정리하고, 기사에 붙은 짧은 숫자 ID를 문자열로 인용하세요."
                     + ' 설명이나 코드 블록 없이 {"text":"...","article_ids":["..."]} JSON 객체만 반환하세요.',
                 },
                 {"role": "user", "content": articles},
@@ -50,6 +52,8 @@ def _request_digest(client, settings, instructions, articles):
         choice = response.choices[0]
         if choice.finish_reason == "stop":
             return choice.message.content
+        if choice.finish_reason == "length":
+            raise AppError(502, "summary_token_limit", "뉴스 요약 토큰 한도에 도달했습니다.")
     else:
         response = client.responses.create(
             model=settings.openai_model,
@@ -100,7 +104,7 @@ def summarize_news(items, settings, *, use_model=True, client=None):
         # Short IDs and briefs leave more of the gateway's reasoning budget for the summary.
         by_id = {
             str(index) if codyssey else item["id"]: item
-            for index, item in enumerate(items[:8] if codyssey else items[:20], 1)
+            for index, item in enumerate(items[:5] if codyssey else items[:20], 1)
         }
         articles = []
         for article_id, item in by_id.items():
@@ -110,7 +114,7 @@ def summarize_news(items, settings, *, use_model=True, client=None):
             articles.append({"id": article_id, **article})
         payload = json.dumps(articles, ensure_ascii=False, default=str)
         if client is None:
-            with create_model_client(settings, timeout=25.0) as provider:
+            with create_model_client(settings, timeout=55.0 if codyssey else 25.0) as provider:
                 output = _request_digest(provider, settings, instructions, payload)
         else:
             output = _request_digest(client, settings, instructions, payload)
@@ -137,7 +141,10 @@ def summarize_news(items, settings, *, use_model=True, client=None):
                 for key in digest.article_ids
             ],
         )
-    except Exception:
+    except Exception as exc:
+        # Never log article text, model output, or provider error bodies.
+        reason = exc.code if isinstance(exc, AppError) else type(exc).__name__
+        logger.warning("News digest unavailable: %s", reason)
         result["error"] = {
             "code": "summary_unavailable",
             "message": "AI 요약을 만들지 못했습니다. 실제 공급원 제목·요약 발췌를 표시합니다.",
