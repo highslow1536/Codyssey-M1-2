@@ -76,6 +76,32 @@ def test_model_failure_never_discards_actual_articles_or_exposes_details():
     assert "secret-test-detail" not in json.dumps(out, default=str)
 
 
+def test_codyssey_digest_validates_plain_json_and_inline_citations():
+    def create(**kwargs):
+        assert "response_format" not in kwargs
+        assert kwargs["store"] is False
+        assert "JSON 객체" in kwargs["messages"][0]["content"]
+        content = '{"text":"요약입니다. [test-article]","article_ids":["test-article"]}'
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(finish_reason="stop", message=SimpleNamespace(content=content))
+            ]
+        )
+
+    result = summarize_news(
+        ITEMS,
+        Settings(
+            _env_file=None,
+            openai_provider="codyssey",
+            codyssey_api_key="test-only",
+            openai_model="test-only",
+        ),
+        client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+    )
+    assert result["method"] == "openai"
+    assert result["highlights"][0]["source_url"] == ITEMS[0]["source_url"]
+
+
 def test_all_four_tools_are_strict_and_reject_owner_or_unknown_fields():
     definitions = tool_definitions()
     assert {t["name"] for t in definitions} == {

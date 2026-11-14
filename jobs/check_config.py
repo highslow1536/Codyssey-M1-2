@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from app.config import Settings, get_settings
 from app.errors import AppError
 from app.providers.discord import DiscordProvider
+from app.providers.openai_client import model_key
 
 
 def is_public_https_origin(value: str) -> bool:
@@ -76,7 +77,7 @@ def check_config(settings: Settings, component: str) -> dict:
     else:
         raise ValueError("Unknown component")
 
-    if not (settings.openai_api_key and settings.openai_model):
+    if not (model_key(settings) and settings.openai_model):
         warnings.append("OpenAI_chat_unavailable_news_uses_excerpts")
     if not (settings.naver_client_id and settings.naver_client_secret):
         warnings.append("Naver_news_unavailable")

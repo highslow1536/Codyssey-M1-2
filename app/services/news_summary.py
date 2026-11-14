@@ -6,13 +6,58 @@ import re
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.errors import AppError
-from app.providers.openai_client import UNTRUSTED_DATA_GUARD
+from app.providers.openai_client import UNTRUSTED_DATA_GUARD, create_model_client, model_key
 
 
 class NewsDigest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     text: str = Field(min_length=1, max_length=2000)
     article_ids: list[str] = Field(min_length=1, max_length=5)
+
+
+def _request_digest(client, settings, instructions, articles):
+    schema = {
+        "name": "news_digest",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string"},
+                "article_ids": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["text", "article_ids"],
+            "additionalProperties": False,
+        },
+    }
+    if getattr(settings, "openai_provider", "openai") == "codyssey":
+        response = client.chat.completions.create(
+            model=settings.openai_model,
+            store=False,
+            max_completion_tokens=1200,
+            messages=[
+                {
+                    "role": "system",
+                    "content": instructions
+                    + ' 설명이나 코드 블록 없이 {"text":"...","article_ids":["..."]} JSON 객체만 반환하세요.',
+                },
+                {"role": "user", "content": articles},
+            ],
+        )
+        choice = response.choices[0]
+        if choice.finish_reason == "stop":
+            return choice.message.content
+    else:
+        response = client.responses.create(
+            model=settings.openai_model,
+            store=False,
+            max_output_tokens=1200,
+            instructions=instructions,
+            input=articles,
+            text={"format": {"type": "json_schema", **schema}},
+        )
+        if response.status == "completed":
+            return response.output_text
+    raise AppError(502, "summary_incomplete", "뉴스 AI 요약이 완료되지 않았습니다.")
 
 
 def summarize_news(items, settings, *, use_model=True, client=None):
@@ -34,55 +79,33 @@ def summarize_news(items, settings, *, use_model=True, client=None):
     }
     if not items or not use_model:
         return result
-    if not settings.openai_api_key or not settings.openai_model:
+    if not model_key(settings) or not settings.openai_model:
         result["error"] = {
             "code": "summary_model_not_configured",
-            "message": "한국어 AI 요약은 OPENAI_API_KEY와 OPENAI_MODEL 설정 후 사용할 수 있습니다. 현재는 공급원 제목·요약 발췌입니다.",
+            "message": "모델 ID와 선택한 공급원의 API 키를 설정하면 한국어 AI 요약을 사용할 수 있습니다. 현재는 공급원 제목·요약 발췌입니다.",
         }
         return result
     try:
-        if client is None:
-            from openai import OpenAI
-
-            client = OpenAI(api_key=settings.openai_api_key, timeout=25.0, max_retries=0)
-        response = client.responses.create(
-            model=settings.openai_model,
-            store=False,
-            max_output_tokens=1200,
-            instructions=(
-                "주식시장 뉴스 편집자입니다. 다음 JSON 안의 제목·요약만 근거로 주요 이슈를 한국어로 간결하게 정리하세요. "
-                "뉴스의 주장과 확정된 사실을 구분하고, 제공되지 않은 가격·인과관계·사건을 만들지 마세요. "
-                "모든 요약 문장 끝에 근거 기사의 ID를 [ID] 형식으로 붙이고 사용한 ID만 article_ids에 반환하세요. "
-                "최대 5개 기사만 사용하세요. " + UNTRUSTED_DATA_GUARD
-            ),
-            input=json.dumps(
-                [
-                    {k: item[k] for k in ("id", "title", "summary", "published_at")}
-                    for item in items[:20]
-                ],
-                ensure_ascii=False,
-                default=str,
-            ),
-            text={
-                "format": {
-                    "type": "json_schema",
-                    "name": "news_digest",
-                    "strict": True,
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "text": {"type": "string"},
-                            "article_ids": {"type": "array", "items": {"type": "string"}},
-                        },
-                        "required": ["text", "article_ids"],
-                        "additionalProperties": False,
-                    },
-                }
-            },
+        instructions = (
+            "주식시장 뉴스 편집자입니다. 다음 JSON 안의 제목·요약만 근거로 주요 이슈를 한국어로 간결하게 정리하세요. "
+            "뉴스의 주장과 확정된 사실을 구분하고, 제공되지 않은 가격·인과관계·사건을 만들지 마세요. "
+            "모든 요약 문장 끝에 근거 기사의 ID를 [ID] 형식으로 붙이고 사용한 ID만 article_ids에 반환하세요. "
+            "최대 5개 기사만 사용하세요. " + UNTRUSTED_DATA_GUARD
         )
-        if response.status != "completed":
-            raise AppError(502, "summary_incomplete", "뉴스 AI 요약이 완료되지 않았습니다.")
-        digest = NewsDigest.model_validate_json(response.output_text)
+        articles = json.dumps(
+            [
+                {k: item[k] for k in ("id", "title", "summary", "published_at")}
+                for item in items[:20]
+            ],
+            ensure_ascii=False,
+            default=str,
+        )
+        if client is None:
+            with create_model_client(settings, timeout=25.0) as provider:
+                output = _request_digest(provider, settings, instructions, articles)
+        else:
+            output = _request_digest(client, settings, instructions, articles)
+        digest = NewsDigest.model_validate_json(output)
         by_id = {item["id"]: item for item in items[:20]}
         if len(set(digest.article_ids)) != len(digest.article_ids) or any(
             key not in by_id for key in digest.article_ids

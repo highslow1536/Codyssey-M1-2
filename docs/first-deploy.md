@@ -66,6 +66,8 @@ Yahoo 시세와 CNN 공포탐욕지수에는 별도 키가 없다. CNN은 공개
 
 [OpenAI API quickstart](https://developers.openai.com/api/docs/quickstart)에 따라 프로젝트 API 키를 만들고 `OPENAI_API_KEY`, 사용할 모델 ID를 `OPENAI_MODEL`에 입력한다. API 사용에는 비용이 발생할 수 있다. 키는 서버에서만 사용한다. 키와 모델을 준비하기 전에도 데이터·지표 조회와 뉴스 발췌 요약은 검증할 수 있다.
 
+Codyssey 가상 키를 사용할 때는 `OPENAI_PROVIDER=codyssey`, `OPENAI_MODEL=gpt-5-mini`로 설정하고 가상 키를 `CODYSSEY_API_KEY`에 입력한다. 서버는 `https://copa.codyssey.kr/v1/chat/completions`를 호출한다. 키와 모델은 Render API에만 등록한다.
+
 ## 5. Discord — 테스트 채널로 수신 확인
 
 과제용 서버에 테스트 텍스트 채널을 만든다. 서버 설정 → 연동 → 웹후크에서 해당 채널의 웹후크를 만들고 URL을 `DISCORD_WEBHOOK_URL`에 입력한다. **봇 토큰은 필요하지 않다.** URL 자체가 비밀값이다. [Discord 공식 안내](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.errors import AppError
-from app.providers.openai_client import generate_reply
+from app.providers.openai_client import create_model_client, generate_reply
 from app.tools.registry import summarize_dataset_tool_definition, validate_tool_args
 
 
@@ -116,6 +116,48 @@ def test_last_round_forces_text_and_unfinished_calls_are_not_saved_as_answers():
     )
     assert stub.calls[-1]["tool_choice"] == "none"
     assert result["text"] == "최종 답변"
+
+
+def test_codyssey_uses_its_gateway_and_round_trips_tool_results():
+    codyssey = settings(openai_provider="codyssey", codyssey_api_key="codyssey-test-only")
+    with create_model_client(codyssey, timeout=5) as sdk:
+        assert str(sdk.base_url) == "https://copa.codyssey.kr/v1/"
+        assert sdk.api_key == "codyssey-test-only"
+    call = {
+        "id": "call_dataset",
+        "type": "function",
+        "function": {"name": "summarize_dataset", "arguments": '{"instrument_id":"INDEX_SP500"}'},
+    }
+    stub = ResponsesStub(
+        [
+            {
+                "choices": [{"message": {"content": None, "tool_calls": [call]}}],
+                "usage": {"completion_tokens": 25},
+            },
+            {"choices": [{"message": {"content": "관측 251건"}}]},
+        ]
+    )
+    result = generate_reply(
+        settings=codyssey,
+        instructions="server context",
+        history=[],
+        user_message="요약해줘",
+        call_tool=lambda name, arguments: {"count": 251},
+        client=SimpleNamespace(chat=SimpleNamespace(completions=stub)),
+    )
+    first, second = stub.calls
+    assert first["messages"][0] == {"role": "system", "content": "server context"}
+    assert first["tools"][0]["function"]["strict"] is True
+    assert first["store"] is False
+    assert second["max_completion_tokens"] == 1175
+    assert second["messages"][-2]["tool_calls"] == [call]
+    assert second["messages"][-1] == {
+        "role": "tool",
+        "tool_call_id": "call_dataset",
+        "content": '{"count": 251}',
+    }
+    assert result["text"] == "관측 251건"
+    assert result["tool_trace"] == [{"tool": "summarize_dataset", "ok": True, "summary": "ok"}]
 
 
 def test_provider_failure_and_missing_configuration_are_explicit():

@@ -131,6 +131,8 @@ OpenAI/Naver/Finnhub 키가 비어 있으면 경고만 남긴다. OpenAI 채팅�
 | JOB_OWNER_UID | - | 등록 (큐 처리 시 필요) | 보유 (필수, 허용 목록 중 하나) |
 | ALLOWED_ORIGINS | - | 보유 (정확한 https 오리진) | - |
 | OPENAI_API_KEY / OPENAI_MODEL | 절대 금지 | 보유 (없으면 경고) | 보유 (같은 값) |
+| OPENAI_PROVIDER | 사용 안 함 | `openai`(기본) / `codyssey` | 필요 시 API와 동일 |
+| CODYSSEY_API_KEY | 절대 금지 | Codyssey 선택 시 가상 키 | 필요 시 API와 동일 |
 | NAVER_API_MODE | - | api_hub (기존 개발자센터 키는 legacy) | API와 같은 값 |
 | NAVER_CLIENT_ID / NAVER_CLIENT_SECRET / FINNHUB_API_KEY | - | 보유 (없으면 경고) | 보유 (같은 값) |
 | NEWS_CACHE_MINUTES / SENTIMENT_CACHE_MINUTES / ANALYSIS_CACHE_MINUTES | - | 기본 30 | 같은 값 |
