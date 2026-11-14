@@ -81,7 +81,8 @@ def test_codyssey_digest_validates_plain_json_and_inline_citations():
         assert "response_format" not in kwargs
         assert kwargs["store"] is False
         assert "JSON 객체" in kwargs["messages"][0]["content"]
-        content = '{"text":"요약입니다. [test-article]","article_ids":["test-article"]}'
+        assert json.loads(kwargs["messages"][1]["content"])[0]["id"] == "1"
+        content = '{"text":"요약입니다. [1]","article_ids":["1"]}'
         return SimpleNamespace(
             choices=[
                 SimpleNamespace(finish_reason="stop", message=SimpleNamespace(content=content))
@@ -99,6 +100,8 @@ def test_codyssey_digest_validates_plain_json_and_inline_citations():
         client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
     )
     assert result["method"] == "openai"
+    assert result["text"] == "요약입니다. [test-article]"
+    assert result["highlights"][0]["article_id"] == "test-article"
     assert result["highlights"][0]["source_url"] == ITEMS[0]["source_url"]
 
 

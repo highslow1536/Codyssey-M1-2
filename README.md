@@ -229,7 +229,7 @@ Firestore의 `alerts`는 규칙·진행 상태, `price_streams`는 종목별 수
 
 후속 질문에는 반환된 `conversation_id`를 추가합니다. 같은 질문을 재전송할 때는 같은 요청 ID와 본문을 사용합니다. 완료된 응답은 다시 반환하며 모델을 재호출하지 않습니다. 모델 실패 시 사용자 메시지와 실패 상태만 남깁니다. 외부 모델 호출과 DB 저장을 하나의 원자적 작업으로 묶을 수 없으므로 네트워크 장애 중 모델 과금 중복까지 보장하지는 않습니다.
 
-모델 ID나 선택한 공급원의 키가 없으면 채팅은 503을 반환합니다. 기본값 `OPENAI_PROVIDER=openai`는 `OPENAI_API_KEY`로 공식 Responses API를 사용합니다. Codyssey 가상 키를 쓸 때는 서버에 `OPENAI_PROVIDER=codyssey`, `OPENAI_MODEL=gpt-5-mini`, `CODYSSEY_API_KEY`를 설정합니다. 이 경우 채팅과 AI 뉴스 요약은 Codyssey 게이트웨이의 Chat Completions로 요청합니다. `summarize_dataset` 도구는 웹과 같은 `DataService`를 사용하고 소유 UID를 서버에서 주입합니다. 임의 코드 실행·외부 전송 도구는 노출하지 않습니다.
+모델 ID나 선택한 공급원의 키가 없으면 채팅은 503을 반환합니다. 기본값 `OPENAI_PROVIDER=openai`는 `OPENAI_API_KEY`로 공식 Responses API를 사용합니다. Codyssey 가상 키를 쓸 때는 서버에 `OPENAI_PROVIDER=codyssey`, `OPENAI_MODEL=gpt-5-mini`, `CODYSSEY_API_KEY`를 설정합니다. 이 경우 채팅과 AI 뉴스 요약은 Codyssey 게이트웨이의 Chat Completions로 요청합니다. Codyssey 뉴스 요약은 최신 기사 최대 8건의 제목과 공급원 요약 일부를 바탕으로 작성하며, 인용 번호는 실제 기사 링크로 연결합니다. `summarize_dataset` 도구는 웹과 같은 `DataService`를 사용하고 소유 UID를 서버에서 주입합니다. 임의 코드 실행·외부 전송 도구는 노출하지 않습니다.
 
 출력 토큰 기본 상한 1,200은 요청 안의 모든 모델 왕복 합계입니다. 도구 결과를 처리할 토큰이 부족하면 오류로 알리고 가짜 답변을 저장하지 않습니다. 대화 삭제 뒤에는 같은 생성/채팅 요청 ID를 재사용하지 말고 새 UUID를 사용하세요.
 

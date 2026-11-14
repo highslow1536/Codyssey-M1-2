@@ -15,6 +15,9 @@ class NewsDigest(BaseModel):
     article_ids: list[str] = Field(min_length=1, max_length=5)
 
 
+_CITATION = re.compile(r"\[([^\[\]]+)\]")
+
+
 def _request_digest(client, settings, instructions, articles):
     schema = {
         "name": "news_digest",
@@ -33,11 +36,12 @@ def _request_digest(client, settings, instructions, articles):
         response = client.chat.completions.create(
             model=settings.openai_model,
             store=False,
-            max_completion_tokens=1200,
+            max_completion_tokens=2000,
             messages=[
                 {
                     "role": "system",
                     "content": instructions
+                    + " 요약은 핵심 이슈 2~3개만 간단히 쓰고, 기사에 붙은 짧은 숫자 ID를 문자열로 인용하세요."
                     + ' 설명이나 코드 블록 없이 {"text":"...","article_ids":["..."]} JSON 객체만 반환하세요.',
                 },
                 {"role": "user", "content": articles},
@@ -92,35 +96,39 @@ def summarize_news(items, settings, *, use_model=True, client=None):
             "모든 요약 문장 끝에 근거 기사의 ID를 [ID] 형식으로 붙이고 사용한 ID만 article_ids에 반환하세요. "
             "최대 5개 기사만 사용하세요. " + UNTRUSTED_DATA_GUARD
         )
-        articles = json.dumps(
-            [
-                {k: item[k] for k in ("id", "title", "summary", "published_at")}
-                for item in items[:20]
-            ],
-            ensure_ascii=False,
-            default=str,
-        )
+        codyssey = getattr(settings, "openai_provider", "openai") == "codyssey"
+        # Short IDs and briefs leave more of the gateway's reasoning budget for the summary.
+        by_id = {
+            str(index) if codyssey else item["id"]: item
+            for index, item in enumerate(items[:8] if codyssey else items[:20], 1)
+        }
+        articles = []
+        for article_id, item in by_id.items():
+            article = {k: item[k] for k in ("title", "summary", "published_at")}
+            if codyssey:
+                article["summary"] = article["summary"][:260]
+            articles.append({"id": article_id, **article})
+        payload = json.dumps(articles, ensure_ascii=False, default=str)
         if client is None:
             with create_model_client(settings, timeout=25.0) as provider:
-                output = _request_digest(provider, settings, instructions, articles)
+                output = _request_digest(provider, settings, instructions, payload)
         else:
-            output = _request_digest(client, settings, instructions, articles)
+            output = _request_digest(client, settings, instructions, payload)
         digest = NewsDigest.model_validate_json(output)
-        by_id = {item["id"]: item for item in items[:20]}
         if len(set(digest.article_ids)) != len(digest.article_ids) or any(
             key not in by_id for key in digest.article_ids
         ):
             raise ValueError("Unknown or duplicated citations")
-        cited = set(re.findall(r"\[([^\[\]]+)\]", digest.text))
+        cited = set(_CITATION.findall(digest.text))
         if cited != set(digest.article_ids):
             raise ValueError("Missing or unknown inline citations")
         result.update(
             method="openai",
-            text=digest.text,
+            text=_CITATION.sub(lambda match: f"[{by_id[match[1]]['id']}]", digest.text),
             error=None,
             highlights=[
                 {
-                    "article_id": key,
+                    "article_id": by_id[key]["id"],
                     **{
                         field: by_id[key][field]
                         for field in ("title", "summary", "source_url", "published_at")
