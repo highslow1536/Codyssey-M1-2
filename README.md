@@ -165,7 +165,7 @@ Discord와 Firestore를 하나의 트랜잭션으로 묶을 수 없어, 응답 �
 
 이 규칙은 등록 이후 `35000 이하 → 35000 초과`를 관측하면 다음 단계로 진행하고, **더 나중 관측값**이 `30000 이하`이면 발생합니다. 최초 관측이 이미 35000을 넘는 경우 돌파로 인정하지 않습니다. 처음부터 초과한 상태도 인정하려면 `gt`를 선택합니다. `cross_below`는 이전 값이 문턱 이상이고 새 값이 문턱 미만이어야 합니다. `gte`·`lte`는 경계값을 포함합니다. 단순 목표가 조건은 첫 새 관측에서도 발생할 수 있습니다.
 
-`DISCORD_WEBHOOK_URL`·`JOB_OWNER_UID`·허용 UID를 설정하고 기존과 같은 `python -m jobs.tick --loop`를 실행합니다. worker는 브리핑 생성·전송과 가격 감시·전송을 각각 처리합니다. 서버나 웹 화면만 켜두면 예약 감시는 실행되지 않습니다. 기본 수집 간격은 `DATA_POLL_MINUTES=5`이며 정규장과 지연된 종가 수신 구간에만 수집합니다. 종목별 수집 임대는 여러 규칙·worker가 공유합니다.
+`DISCORD_WEBHOOK_URL`·`JOB_OWNER_UID`·허용 UID를 설정합니다. `PRICE_ALERTS_IN_API=true`이면 FastAPI가 켜져 있는 동안 가격을 감시하고 알림을 전송합니다. 브리핑 예약은 `python -m jobs.tick --loop`로 실행합니다. 기본 수집 간격은 `DATA_POLL_MINUTES=5`이며 정규장과 지연된 종가 수신 구간에만 수집합니다. 종목별 수집 임대는 여러 규칙·worker가 공유합니다.
 
 Yahoo `history(period="5d", interval="5m", auto_adjust=False, prepost=False, actions=True)`로 최근 5거래일 범위의 완료된 봉을 가져옵니다. [yfinance 공식 소스](https://github.com/ranaroussi/yfinance/blob/main/yfinance/scrapers/history.py)의 인수에 따라 배당 조정과 시간외 거래를 끄고, 실제 거래소 달력으로 휴장·조기 폐장·장중 휴식을 제외합니다. 공급원 심볼·시간대·통화를 확인하며 실제 봉 종료 시각을 관측 시각으로 보존합니다. 한국 안내 지연은 20분이며, 5분 봉 내부의 일시적인 돌파나 선후관계는 알 수 없습니다. 이 기능은 수집한 종가 시계열에서 조건을 확인한 알림입니다.
 
@@ -369,7 +369,7 @@ uv sync --locked --extra dev
 
 서버는 고정된 한 사용자의 저장 데이터와 알림만 다룹니다. 기존 시세·뉴스·CNN/VIX·지표 계산을 재사용하며, 별도 OpenAI 키 없이 외부 채팅 앱의 모델이 결과를 해석합니다. 알림 생성·수정·초기화는 정확한 조건을 보여주는 **MCP form elicitation**에서 사용자가 승인한 뒤 저장합니다. 폼 미지원 호스트에서는 조회·미리보기를 사용하고 기존 웹에서 알림을 저장하세요.
 
-가격 알림의 실제 감시·Discord 전송에는 같은 UID를 설정한 별도 `jobs.tick` worker가 필요합니다. MCP는 API 서버나 worker를 자동으로 시작하지 않습니다. HTTP 주소만 받는 원격 호스트용 서버는 아직 제공하지 않습니다.
+가격 감시와 Discord 전송은 같은 UID를 설정한 FastAPI의 가격 감시 루프 또는 `jobs.tick` worker가 실행합니다. MCP는 API 서버나 worker를 자동으로 시작하지 않습니다. HTTP 주소만 받는 원격 호스트용 서버는 아직 제공하지 않습니다.
 
 2026년 11월 15일, 웹 채팅과 별개인 **Codex CLI 채팅**에서 `get_price_history`와 `calculate_indicators`를 실제로 호출했습니다. 애플의 11월 9~13일 일봉 5개, 마지막 거래일(11월 13일) 수정 종가 356.27 USD, Wilder RSI(14) 61.04가 도구 결과와 채팅 답변에서 일치했습니다. [MCP 호스트 연결 및 검증 기록](docs/mcp.md#codex-cli-채팅-검증)
 
@@ -392,7 +392,7 @@ APP_ENV=production .venv/bin/python -m jobs.check_config --component api
 APP_ENV=production .venv/bin/python -m jobs.check_config --component worker
 ```
 
-Render Free API는 유휴 시 정지하므로 예약 작업은 별도 워커가 담당합니다. 비용 없이 과제를 시연하려면 항상 켜진 로컬 머신에서 `python -m jobs.tick --loop --interval 60`을 실행할 수 있습니다. 1회 tick도 실제 전송을 수행하므로 실행 전에 목적지와 대기열을 확인하세요. `/healthz`와 사전 검사 통과는 Firebase·OpenAI·Discord의 실제 권한·연결 확인을 대신하지 않습니다.
+Render Free에서 `PRICE_ALERTS_IN_API=true`를 설정하면 FastAPI가 가격 감시를 60초마다 확인합니다. 유휴 절전 중에는 감시가 멈추며 다음 요청으로 API가 시작될 때 재개합니다. 상시 감시나 브리핑 예약은 항상 켜진 호스트에서 `python -m jobs.tick --loop --interval 60`으로 실행할 수 있습니다. 1회 tick도 실제 전송을 수행하므로 실행 전에 목적지와 대기열을 확인하세요. `/healthz`와 사전 검사 통과는 Firebase·OpenAI·Discord의 실제 권한·연결 확인을 대신하지 않습니다.
 
 macOS에서 장중에 로컬 워커를 실행할 때는 전원을 연결하고 덮개를 열어 둔 상태에서 `caffeinate -i .venv/bin/python -m jobs.tick --loop --interval 60`으로 유휴 절전을 막을 수 있습니다. 덮개를 닫거나 컴퓨터를 재시작하면 워커 실행이 중단될 수 있습니다. 장중 감시를 계속하려면 깨어 있는 호스트에서 실행하세요.
 

@@ -65,7 +65,10 @@ def check_config(settings: Settings, component: str) -> dict:
             errors.append("ALLOWED_ORIGINS_must_be_exact_public_https_origins")
         if bool(settings.job_owner_uid) != bool(settings.discord_webhook_url):
             warnings.append("Discord_queue_and_worker_require_both_JOB_OWNER_UID_and_webhook")
-    elif component == "worker":
+    elif component != "worker":
+        raise ValueError("Unknown component")
+
+    if component == "worker" or settings.price_alerts_in_api:
         if not settings.job_owner_uid or settings.job_owner_uid not in settings.allowed_uids:
             errors.append("JOB_OWNER_UID_must_be_allowlisted")
         try:
@@ -74,8 +77,6 @@ def check_config(settings: Settings, component: str) -> dict:
             DiscordProvider(settings.discord_webhook_url)  # Validates locally; does not send.
         except AppError:
             errors.append("DISCORD_WEBHOOK_URL_required_or_invalid")
-    else:
-        raise ValueError("Unknown component")
 
     if not (model_key(settings) and settings.openai_model):
         warnings.append("OpenAI_chat_unavailable_news_uses_excerpts")

@@ -1,4 +1,7 @@
+import asyncio
 import logging
+import threading
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -10,16 +13,49 @@ from google.api_core.exceptions import GoogleAPICallError
 from app.api import alerts, briefings, chat, conversations, data, jobs, market, research
 from app.config import get_settings
 from app.errors import AppError
+from app.firebase import get_firestore
+from app.services.alerts import AlertService
+from jobs.tick import run_loop
 
 logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+
+    @asynccontextmanager
+    async def lifespan(_app):
+        if not settings.price_alerts_in_api:
+            yield
+            return
+
+        uid = settings.job_owner_uid
+        if not uid or uid not in settings.allowed_uids or not settings.discord_webhook_url:
+            raise RuntimeError(
+                "Price alert monitoring requires an allowed owner and a Discord webhook."
+            )
+
+        shutdown = threading.Event()
+        worker = threading.Thread(
+            target=run_loop,
+            args=({"alerts": AlertService(get_firestore(), settings)}, uid, 60, shutdown),
+            name="api-price-alerts",
+            daemon=True,
+        )
+        worker.start()
+        try:
+            yield
+        finally:
+            shutdown.set()
+            await asyncio.to_thread(worker.join, 10)
+            if worker.is_alive():
+                logger.warning("Price alert worker did not finish within the API shutdown window")
+
     application = FastAPI(
         title="주식시장 AI 비서",
         version="0.1.0",
         description="실제 시장 데이터·과제 데이터 CRUD·대화·요약 기반 채팅 API",
+        lifespan=lifespan,
     )
     application.add_middleware(
         CORSMiddleware,

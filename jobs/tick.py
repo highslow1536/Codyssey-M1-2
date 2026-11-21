@@ -1,4 +1,4 @@
-"""One durable scheduler/outbox tick, or a local foreground loop. No API timer."""
+"""Run one durable scheduler/outbox tick or a foreground worker loop."""
 
 import argparse
 import json

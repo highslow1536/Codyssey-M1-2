@@ -2,12 +2,14 @@ import json
 import os
 import subprocess
 import sys
+import threading
 
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
+import app.main as api_app
 from app.config import Settings, get_settings
 from app.main import create_app
 from jobs.check_config import check_config
@@ -118,6 +120,49 @@ def test_worker_requires_valid_destination_and_allowlisted_owner(service_account
     settings.job_owner_uid = "foreign"
     settings.discord_webhook_url = "https://example.com/secret"
     assert not check_config(settings, "worker")["ok"]
+
+
+def test_api_price_monitoring_requires_worker_configuration(service_account):
+    settings = deployment_settings(service_account, price_alerts_in_api=True)
+    result = check_config(settings, "api")
+    assert set(result["errors"]) == {
+        "JOB_OWNER_UID_must_be_allowlisted",
+        "DISCORD_WEBHOOK_URL_required_or_invalid",
+    }
+
+
+def test_api_lifespan_runs_price_monitor_without_blocking_requests(monkeypatch):
+    settings = Settings(
+        _env_file=None,
+        price_alerts_in_api=True,
+        job_owner_uid="owner",
+        allowed_user_uids="owner",
+        discord_webhook_url="https://discord.com/api/webhooks/1234/test-token",
+    )
+    tick_started = threading.Event()
+    release_tick = threading.Event()
+    workers = []
+
+    class PriceAlerts:
+        def tick(self, uid):
+            assert uid == "owner"
+            workers.append(threading.current_thread())
+            tick_started.set()
+            release_tick.wait(5)
+            return {"alerts_triggered": 0}
+
+    monkeypatch.setattr(api_app, "get_settings", lambda: settings)
+    monkeypatch.setattr(api_app, "get_firestore", object)
+    monkeypatch.setattr(api_app, "AlertService", lambda db, config: PriceAlerts())
+    with TestClient(create_app()) as client:
+        try:
+            assert tick_started.wait(2)
+            assert client.get("/healthz").json() == {"status": "ok"}
+            assert workers[0].is_alive()
+        finally:
+            release_tick.set()
+    assert len(workers) == 1
+    assert not workers[0].is_alive()
 
 
 def test_cli_rejects_emulators_without_printing_secret_input(tmp_path):

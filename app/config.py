@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     allowed_user_uids: str = ""
     job_owner_uid: str | None = None
+    price_alerts_in_api: bool = False
     mcp_owner_uid: str | None = None
     mcp_confirmation_timeout_seconds: int = Field(default=120, ge=30, le=300)
     openai_api_key: str | None = Field(default=None, repr=False)

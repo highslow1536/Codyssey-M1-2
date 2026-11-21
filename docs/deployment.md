@@ -35,8 +35,8 @@ Vercel 프런트·Render API·선택 Discord 워커의 배포 절차다. 실제 
   백그라운드 워커 타입, numInstances 1)로 둔다. API용 render.yaml과 같은 Blueprint에 합치지 않는다.
 - 두 Blueprint 모두 환경변수 그룹 참조를 넣지 않는다. 같은 값을 sync:false로 각 서비스에 직접 입력한다.
   운영자가 Render 대시보드에서 환경변수 그룹을 공유하도록 설정할 수는 있지만, 자동으로 공유되지 않는다.
-- Free 플랜 Render 웹 서비스는 트래픽이 없으면 슬립 상태가 되므로 연속 가격 알림 용도로 쓰지 않는다.
-  연속 알림은 유료 워커 또는 항상 켜진 로컬 머신의 워커로 처리한다. [Render 무료 서비스 제한](https://render.com/docs/free) 참조.
+- Render 웹 서비스에 `PRICE_ALERTS_IN_API=true`를 설정하면 FastAPI가 켜져 있는 동안 가격 감시와 전송을 실행한다.
+  Free 인스턴스가 유휴 절전에 들어가면 감시도 멈춘다. 연속 감시는 항상 켜진 호스트의 워커에서 실행할 수 있다. [Render 무료 서비스 제한](https://render.com/docs/free)
 
 ## 2. 배포 순서 (순환 참조 해소)
 
@@ -78,7 +78,7 @@ Render 대시보드의 **New → Blueprint**에서 저장소와 배포할 브랜
 - 타입: web, 런타임: python, 플랜: free.
 - 빌드: pip install -r requirements.lock.
 - 시작: python -m jobs.check_config --component api && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT.
-  시작 전 check_config가 구성을 검사하고, 실패하면 API를 띄우지 않는다. exec 형태 그대로 둔다. exec가 있어야 Render의 SIGTERM이 실제 프로세스에 전달된다. 워커를 uvicorn 시작 과정에 넣지 않는다.
+  시작 전 check_config가 구성을 검사하고, 실패하면 API를 띄우지 않는다. `exec`가 Render의 SIGTERM을 실제 프로세스에 전달한다. API에서 가격 감시를 켜려면 `PRICE_ALERTS_IN_API=true`, `JOB_OWNER_UID`, `DISCORD_WEBHOOK_URL`을 설정한다. 가격 감시는 FastAPI의 시작·종료 수명주기를 따라가며 브리핑 예약은 기존 별도 워커에서 실행한다.
 - 헬스 체크 경로: /healthz.
 - 고정값: PYTHON_VERSION=3.12.14, APP_ENV=production, 캐시 3종 기본값 30.
 - 나머지 값(Firebase 자격, 허용 UID/오리진, OpenAI, 뉴스 키, Discord, JOB_OWNER_UID 등)은 대시보드에서 직접 입력한다.
