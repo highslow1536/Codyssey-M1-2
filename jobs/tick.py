@@ -2,14 +2,19 @@
 
 import argparse
 import json
+import logging
 import signal
 import threading
+import time
 
 from app.config import get_settings
 from app.errors import AppError
 from app.firebase import get_firestore
 from app.services.alerts import AlertService
 from app.services.briefings import BriefingService
+from app.worker_logging import log_worker_issue
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args(argv=None):
@@ -56,9 +61,15 @@ def run_once(services, uid, shutdown=None):
                 shutdown.set()
             failed = True
             break
-        except Exception:
-            # Omit arbitrary upstream text; one job cannot suppress the other.
+        except Exception as exc:
             _log({"error": name + "_tick_failed"})
+            log_worker_issue(
+                logger,
+                "worker_tick_failed",
+                exc=exc,
+                job=name,
+                code=exc.code if isinstance(exc, AppError) else "unexpected_error",
+            )
             failed = True
     return failed
 
@@ -70,8 +81,17 @@ def run_loop(services, uid, interval, shutdown):
         if shutdown.is_set():
             break
         try:
+            waiting_since = time.time()
             if shutdown.wait(interval):
                 break
+            waited = time.time() - waiting_since
+            if waited > interval + 30:
+                log_worker_issue(
+                    logger,
+                    "worker_tick_resumed",
+                    expected_wait_seconds=interval,
+                    actual_wait_seconds=round(waited, 1),
+                )
         except KeyboardInterrupt:
             shutdown.set()
             break
@@ -79,12 +99,26 @@ def run_loop(services, uid, interval, shutdown):
 
 def main():
     args = parse_args()
-    settings = get_settings()
-    uid = settings.job_owner_uid
-    if not uid or uid not in settings.allowed_uids:
-        raise AppError(503, "configuration_missing", "허용 목록에 있는 JOB_OWNER_UID가 필요합니다.")
-    db = get_firestore()
-    services = {"briefings": BriefingService(db, settings), "alerts": AlertService(db, settings)}
+    try:
+        settings = get_settings()
+        uid = settings.job_owner_uid
+        if not uid or uid not in settings.allowed_uids:
+            raise AppError(
+                503, "configuration_missing", "허용 목록에 있는 JOB_OWNER_UID가 필요합니다."
+            )
+        db = get_firestore()
+        services = {
+            "briefings": BriefingService(db, settings),
+            "alerts": AlertService(db, settings),
+        }
+    except Exception as exc:
+        log_worker_issue(
+            logger,
+            "worker_startup_failed",
+            exc=exc,
+            code=exc.code if isinstance(exc, AppError) else "unexpected_error",
+        )
+        raise SystemExit(1) from None
     shutdown = threading.Event()
     _install_shutdown_handlers(shutdown)
     mode = "loop" if args.loop else "once"

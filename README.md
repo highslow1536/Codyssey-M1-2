@@ -394,6 +394,10 @@ APP_ENV=production .venv/bin/python -m jobs.check_config --component worker
 
 Render Free API는 유휴 시 정지하므로 예약 작업은 별도 워커가 담당합니다. 비용 없이 과제를 시연하려면 항상 켜진 로컬 머신에서 `python -m jobs.tick --loop --interval 60`을 실행할 수 있습니다. 1회 tick도 실제 전송을 수행하므로 실행 전에 목적지와 대기열을 확인하세요. `/healthz`와 사전 검사 통과는 Firebase·OpenAI·Discord의 실제 권한·연결 확인을 대신하지 않습니다.
 
+macOS에서 장중에 로컬 워커를 실행할 때는 전원을 연결하고 덮개를 열어 둔 상태에서 `caffeinate -i .venv/bin/python -m jobs.tick --loop --interval 60`으로 유휴 절전을 막을 수 있습니다. 덮개를 닫거나 컴퓨터를 재시작하면 워커 실행이 중단될 수 있습니다. 장중 감시를 계속하려면 깨어 있는 호스트에서 실행하세요.
+
+운영 로그를 파일로 수집할 때는 표준 출력과 표준 오류를 함께 저장합니다. `worker_tick_resumed`는 예정된 주기보다 길었던 대기 시간을 기록합니다. `alert_monitor_failed`에는 종목, 실패 단계와 오류 코드가, `discord_delivery_failed`에는 이력 ID, 전송 부분, 시도 횟수와 재시도 상태가 기록됩니다. 오류의 종류와 발생 위치를 남기고 원문 응답·인증값·웹훅 주소는 제외합니다.
+
 | 제출 항목 | 상태 |
 | --- | --- |
 | 백엔드 필수 API | 운영 이메일 로그인, 인증된 조회, 데이터 CRUD·요약 검증 |

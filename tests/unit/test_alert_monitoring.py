@@ -1,7 +1,12 @@
+import json
 from datetime import datetime, timezone
+from unittest.mock import Mock
+
+import pytest
 
 from app.catalog import get_instrument
-from app.services.alerts import monitoring_window, preview
+from app.errors import AppError
+from app.services.alerts import AlertService, monitoring_window, preview
 
 
 def at(value):
@@ -41,3 +46,48 @@ def test_preview_explains_sequence_decimal_threshold_and_observation_limits():
     assert "그리고" in result["description"]
     assert result["observation"]["delay_seconds"] == 1200
     assert result["warnings"]
+
+
+@pytest.mark.parametrize(
+    ("failure", "stage", "code"),
+    [
+        ("fetch", "fetch_quotes", "quotes_unavailable"),
+        ("stale", "check_quote_freshness", "stale_quotes"),
+    ],
+)
+def test_monitor_logs_failed_stage_without_upstream_text(caplog, failure, stage, code):
+    now = at("2026-10-22T01:00:00")
+    settings = Mock(data_poll_minutes=5)
+    provider = Mock()
+    provider.fetch.return_value = []
+    if failure == "fetch":
+        provider.fetch.side_effect = AppError(503, "provider_unavailable", "private URL")
+    service = AlertService(Mock(), settings, provider=provider, clock=lambda: now)
+    repo = service.repository = Mock()
+    repo.list_rules.return_value = [
+        {
+            "id": "rule",
+            "instrument_id": "INDEX_KOSPI",
+            "active": True,
+            "revision": 1,
+            "state": {"completed": False},
+        }
+    ]
+    repo.latest_quote.return_value = None
+    repo.ready.return_value = []
+
+    assert service.tick("owner")["monitor_errors"] == 1
+
+    (logged,) = [json.loads(record.message) for record in caplog.records]
+    assert (logged["event"], logged["instrument_id"], logged["stage"], logged["code"]) == (
+        "alert_monitor_failed",
+        "INDEX_KOSPI",
+        stage,
+        code,
+    )
+    assert "private URL" not in caplog.text
+    if failure == "fetch":
+        assert logged["exceptions"][-1]["code"] == "provider_unavailable"
+    else:
+        assert logged["latest_bar_at"] is None
+        assert logged["bars_fetched"] == 0

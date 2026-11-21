@@ -1,5 +1,6 @@
 """Five-minute real observation monitoring and durable conditional Discord alerts."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -13,6 +14,9 @@ from app.providers.discord import split_content
 from app.providers.quotes import YahooQuoteProvider
 from app.repositories.alerts import AlertRepository
 from app.services.delivery import drain_outbox
+from app.worker_logging import log_worker_issue
+
+logger = logging.getLogger(__name__)
 
 OPERATORS = {
     "gt": "초과",
@@ -148,6 +152,8 @@ class AlertService:
                 instruments.setdefault(rule["instrument_id"], []).append(rule)
         for instrument_id, selected in instruments.items():
             instrument = get_instrument(instrument_id)
+            stage = "session_calendar"
+            details = {}
             try:
                 if not monitoring_window(instrument, now, self.settings.data_poll_minutes):
                     for rule in selected:
@@ -155,29 +161,37 @@ class AlertService:
                             uid, rule["id"], "market_closed", now, revision=rule["revision"]
                         )
                     continue
+                stage = "claim_quote_poll"
                 token = self.repository.claim_poll(
                     instrument_id, now, self.settings.data_poll_minutes
                 )
                 if token:
+                    stage = "fetch_quotes"
                     try:
                         quotes = self.provider.fetch(instrument, now)
-                        self.repository.finish_poll(
-                            instrument_id, token, self.clock(), quotes=quotes
+                    except Exception as exc:
+                        error = AppError(
+                            503, "quotes_unavailable", "Yahoo 장중 시세를 수집하지 못했습니다."
                         )
-                        counts["quotes_fetched"] += len(quotes)
-                    except Exception:
+                        stage = "store_poll_failure"
                         self.repository.finish_poll(
                             instrument_id,
                             token,
                             self.clock(),
-                            error={
-                                "code": "quotes_unavailable",
-                                "message": "Yahoo 장중 시세를 수집하지 못했습니다.",
-                            },
+                            error={"code": error.code, "message": error.message},
                         )
-                        raise AppError(
-                            503, "quotes_unavailable", "Yahoo 장중 시세를 수집하지 못했습니다."
-                        ) from None
+                        stage = "fetch_quotes"
+                        raise error from exc
+                    stage = "store_quotes"
+                    details["bars_fetched"] = len(quotes)
+                    if not self.repository.finish_poll(
+                        instrument_id, token, self.clock(), quotes=quotes
+                    ):
+                        log_worker_issue(
+                            logger, "alert_poll_lease_lost", instrument_id=instrument_id, **details
+                        )
+                    counts["quotes_fetched"] += len(quotes)
+                stage = "check_quote_freshness"
                 latest = self.repository.latest_quote(instrument_id)
                 freshness = timedelta(
                     seconds=instrument["delay_seconds"]
@@ -186,6 +200,8 @@ class AlertService:
                     + 120
                 )
                 if not latest or now - latest["event_time"] > freshness:
+                    details["latest_bar_at"] = latest["event_time"].isoformat() if latest else None
+                    details["max_age_seconds"] = int(freshness.total_seconds())
                     raise AppError(
                         503, "stale_quotes", "최신 완성 봉이 오래되어 새 조건 판정을 중지했습니다."
                     )
@@ -195,7 +211,9 @@ class AlertService:
                     or r["created_at"]
                     for r in selected
                 )
+                stage = "load_cached_quotes"
                 quotes = self.repository.cached_quotes(instrument_id, now, earliest)
+                stage = "evaluate_rule"
                 for rule in selected:
                     watermark = (
                         rule["state"].get("last_event_time")
@@ -212,7 +230,19 @@ class AlertService:
                             event_content,
                             revision=rule["revision"],
                         )
-            except AppError as exc:
+            except Exception as exc:
+                log_worker_issue(
+                    logger,
+                    "alert_monitor_failed",
+                    exc=exc,
+                    instrument_id=instrument_id,
+                    stage=stage,
+                    affected_rules=len(selected),
+                    code=exc.code if isinstance(exc, AppError) else "unexpected_error",
+                    **details,
+                )
+                if not isinstance(exc, AppError):
+                    raise
                 counts["monitor_errors"] += 1
                 for rule in selected:
                     self.repository.status(

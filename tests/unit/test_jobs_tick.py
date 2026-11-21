@@ -66,7 +66,7 @@ def test_run_once_logs_each_service_result(capsys):
     assert [s.calls for s in services.values()] == [["owner-1"], ["owner-1"]]
 
 
-def test_failed_tick_continues_other_job_and_hides_details(capsys):
+def test_failed_tick_continues_other_job_and_logs_safe_details(capsys, caplog):
     services = {
         "briefings": StubService(exc=RuntimeError("upstream boom secret-text")),
         "alerts": StubService({"alerts_triggered": 1}),
@@ -79,6 +79,12 @@ def test_failed_tick_continues_other_job_and_hides_details(capsys):
     raw = json.dumps(lines)
     assert "upstream boom" not in raw
     assert "secret-text" not in raw
+    (logged,) = [json.loads(record.message) for record in caplog.records]
+    assert logged["event"] == "worker_tick_failed"
+    assert logged["job"] == "briefings"
+    assert logged["exceptions"][0]["type"] == "RuntimeError"
+    assert logged["exceptions"][0]["frames"]
+    assert "secret-text" not in caplog.text
 
 
 def test_run_once_keyboard_interrupt_requests_shutdown(capsys):
