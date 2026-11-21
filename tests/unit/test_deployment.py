@@ -1,15 +1,19 @@
+import asyncio
 import json
 import os
 import subprocess
 import sys
 import threading
+from types import SimpleNamespace
 
+import httpx
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
 import app.main as api_app
+import app.render_self_ping as self_ping
 from app.config import Settings, get_settings
 from app.main import create_app
 from jobs.check_config import check_config
@@ -163,6 +167,66 @@ def test_api_lifespan_runs_price_monitor_without_blocking_requests(monkeypatch):
             release_tick.set()
     assert len(workers) == 1
     assert not workers[0].is_alive()
+
+
+def test_api_lifespan_starts_and_cancels_render_self_ping(monkeypatch):
+    started = threading.Event()
+    stopped = threading.Event()
+    seen = []
+
+    async def probe(url):
+        seen.append(url)
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            stopped.set()
+
+    settings = Settings(_env_file=None, api_self_ping=True)
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://test-api.onrender.com")
+    monkeypatch.setattr(api_app, "get_settings", lambda: settings)
+    monkeypatch.setattr(self_ping, "run_self_ping", probe)
+    with TestClient(create_app()) as client:
+        assert started.wait(2)
+        assert client.get("/healthz").json() == {"status": "ok"}
+        assert seen == ["https://test-api.onrender.com/healthz"]
+    assert stopped.is_set()
+
+
+def test_render_self_ping_records_health_response_and_ignores_loading_page(monkeypatch, capsys):
+    probe_ids = []
+    waits = []
+
+    def reply(request):
+        assert request.url.host == "test-api.onrender.com" and request.url.path == "/healthz"
+        probe_ids.append(request.url.params["render_self_ping"])
+        if len(probe_ids) == 1:
+            return httpx.Response(200, text="Loading")
+        return httpx.Response(200, json={"status": "ok"})
+
+    async def wait(seconds):
+        waits.append(seconds)
+        if len(waits) == 3:
+            raise asyncio.CancelledError
+
+    monkeypatch.setattr(self_ping, "asyncio", SimpleNamespace(sleep=wait))
+    monkeypatch.setattr(
+        self_ping,
+        "httpx",
+        SimpleNamespace(
+            AsyncClient=lambda **options: httpx.AsyncClient(
+                transport=httpx.MockTransport(reply), **options
+            ),
+            HTTPError=httpx.HTTPError,
+        ),
+    )
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(self_ping.run_self_ping("https://test-api.onrender.com/healthz"))
+
+    rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert waits == [60, 300, 300]
+    assert [row["id"] for row in rows] == probe_ids
+    assert [row["ok"] for row in rows] == [False, True]
 
 
 def test_cli_rejects_emulators_without_printing_secret_input(tmp_path):

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import threading
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -14,10 +14,36 @@ from app.api import alerts, briefings, chat, conversations, data, jobs, market, 
 from app.config import get_settings
 from app.errors import AppError
 from app.firebase import get_firestore
+from app.render_self_ping import self_ping_lifespan
 from app.services.alerts import AlertService
 from jobs.tick import run_loop
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def price_alert_lifespan(settings):
+    uid = settings.job_owner_uid
+    if not uid or uid not in settings.allowed_uids or not settings.discord_webhook_url:
+        raise RuntimeError(
+            "Price alert monitoring requires an allowed owner and a Discord webhook."
+        )
+
+    shutdown = threading.Event()
+    worker = threading.Thread(
+        target=run_loop,
+        args=({"alerts": AlertService(get_firestore(), settings)}, uid, 60, shutdown),
+        name="api-price-alerts",
+        daemon=True,
+    )
+    worker.start()
+    try:
+        yield
+    finally:
+        shutdown.set()
+        await asyncio.to_thread(worker.join, 10)
+        if worker.is_alive():
+            logger.warning("Price alert worker did not finish within the API shutdown window")
 
 
 def create_app() -> FastAPI:
@@ -25,31 +51,12 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app):
-        if not settings.price_alerts_in_api:
+        async with AsyncExitStack() as tasks:
+            if settings.price_alerts_in_api:
+                await tasks.enter_async_context(price_alert_lifespan(settings))
+            if settings.api_self_ping:
+                await tasks.enter_async_context(self_ping_lifespan())
             yield
-            return
-
-        uid = settings.job_owner_uid
-        if not uid or uid not in settings.allowed_uids or not settings.discord_webhook_url:
-            raise RuntimeError(
-                "Price alert monitoring requires an allowed owner and a Discord webhook."
-            )
-
-        shutdown = threading.Event()
-        worker = threading.Thread(
-            target=run_loop,
-            args=({"alerts": AlertService(get_firestore(), settings)}, uid, 60, shutdown),
-            name="api-price-alerts",
-            daemon=True,
-        )
-        worker.start()
-        try:
-            yield
-        finally:
-            shutdown.set()
-            await asyncio.to_thread(worker.join, 10)
-            if worker.is_alive():
-                logger.warning("Price alert worker did not finish within the API shutdown window")
 
     application = FastAPI(
         title="주식시장 AI 비서",
