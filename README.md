@@ -21,7 +21,7 @@ Function Calling, 외부 MCP, 실제 가격 그래프, CSV/JSON 다운로드와 
 | Function Calling | 운영 채팅의 `summarize_dataset` 호출 성공 기록과 Yahoo 출처를 확인할 수 있습니다. 답변의 S&P 500 관측 251건과 마지막 수정 종가 7,663.43은 별도로 조회한 데이터 요약과 일치했습니다. [운영 채팅 화면](#운영-채팅-화면) |
 | 외부 MCP | 별도 Codex CLI 채팅에서 `get_price_history`와 `calculate_indicators`를 호출해 AAPL 일봉 5건과 Wilder RSI(14) 61.04를 확인했습니다. [실제 호출 결과 캡처](#mcp-실제-도구-호출-결과) · [재현 절차](docs/mcp.md#codex-cli-채팅-검증) |
 | 실제 가격 그래프 | 로컬 브라우저 검증 화면의 **기록의 흐름**에서 Yahoo AAPL 수정 종가 3건(2025년 10월 21~23일)이 그래프와 데이터 표에 함께 표시됩니다. [가격 그래프 캡처](docs/screenshots/price-chart.png) |
-| CSV/JSON 다운로드 | **분석 데이터**에서 두 형식으로 같은 종목·기간의 전체 기록을 받을 수 있습니다. [다운로드 확인 방법](#csvjson-다운로드-확인) |
+| CSV/JSON 다운로드 | 운영 웹의 실제 다운로드 화면과 CSV·JSON 파일 내용 캡처를 로그인 없이 확인할 수 있습니다. [캡처 및 재현 절차](#csvjson-다운로드-확인) |
 | 다크 모드 | 운영 웹 오른쪽 위의 **다크 모드** 버튼으로 밝은 화면과 어두운 화면을 전환합니다. 로그인 전에 바로 확인할 수 있으며, 새로고침해도 같은 브라우저에 선택이 유지됩니다. [마켓노트 웹](https://codyssey-m1-2-gold.vercel.app/) |
 
 운영 웹에서 채팅, 가격 그래프, 다운로드를 직접 확인하려면 접근이 허용된 평가용 계정이 필요합니다.
@@ -32,6 +32,16 @@ Function Calling, 외부 MCP, 실제 가격 그래프, CSV/JSON 다운로드와 
 외부 MCP를 직접 재현하려면 로컬 stdio 서버를 Codex CLI에 등록합니다. 설정과 실제 호출에 사용한 종목·기간은 [MCP 연결 안내](docs/mcp.md#codex-cli-채팅-검증)에 있습니다.
 
 ### CSV/JSON 다운로드 확인
+
+운영 웹에서 S&P 500의 **2026년 10월 20~22일** 기록을 CSV와 JSON으로 각각 내려받았습니다. 운영 화면에서 두 다운로드 버튼과 완료 건수를 볼 수 있고, 파일 내용 캡처에서는 실제 파일에서 발췌한 공개 Yahoo 시세 3건의 날짜·수정 종가·출처를 비교할 수 있습니다.
+
+![운영 웹 분석 데이터 화면의 CSV 다운로드 및 JSON 다운로드 버튼과 JSON 다운로드 3건 완료 표시](docs/screenshots/production-data-download.png)
+
+![실제 다운로드한 CSV의 공개 시세 발췌. S&P 500 수정 종가 3건](docs/screenshots/production-export-csv.png)
+
+![실제 다운로드한 JSON의 공개 시세 발췌. 같은 S&P 500 수정 종가 3건](docs/screenshots/production-export-json.png)
+
+#### 운영 웹에서 재현
 
 1. [데이터 워크스페이스](https://codyssey-m1-2-gold.vercel.app/#data)에 로그인하고 종목과 날짜 범위를 선택해 **조회하기**를 누릅니다. 기록이 비어 있으면 **Yahoo 데이터 수집**을 사용합니다.
 2. **분석 데이터**에서 **CSV 다운로드**와 **JSON 다운로드**를 각각 누릅니다. 파일 이름에 종목 ID와 시작일·종료일이 표시됩니다.
