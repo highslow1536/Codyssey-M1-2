@@ -19,7 +19,7 @@ Function Calling, 외부 MCP, 실제 가격 그래프를 구현했습니다. CSV
 | 평가 항목 | 증빙에서 확인할 내용 |
 | --- | --- |
 | Function Calling | 운영 채팅의 `summarize_dataset` 호출 성공 기록과 Yahoo 출처를 확인할 수 있습니다. 답변의 S&P 500 관측 251건과 마지막 수정 종가 7,663.43은 별도로 조회한 데이터 요약과 일치했습니다. [운영 채팅 화면](#운영-채팅-화면) |
-| 외부 MCP | 별도 Codex CLI 채팅에서 `get_price_history`가 AAPL 일봉 5건을, `calculate_indicators`가 Wilder RSI(14) 61.04를 반환했습니다. 호출별 입력과 실제 결과가 기록되어 있습니다. [Codex CLI 호출 기록](docs/mcp.md#codex-cli-채팅-검증) |
+| 외부 MCP | 별도 Codex CLI 채팅에서 `get_price_history`와 `calculate_indicators`를 호출해 AAPL 일봉 5건과 Wilder RSI(14) 61.04를 확인했습니다. [실제 호출 결과 캡처](#mcp-실제-도구-호출-결과) · [재현 절차](docs/mcp.md#codex-cli-채팅-검증) |
 | 실제 가격 그래프 | 로컬 브라우저 검증 화면의 **기록의 흐름**에서 Yahoo AAPL 수정 종가 3건(2025년 10월 21~23일)이 그래프와 데이터 표에 함께 표시됩니다. [가격 그래프 캡처](docs/screenshots/price-chart.png) |
 
 운영 웹에서 직접 확인하려면 접근이 허용된 평가용 계정이 필요합니다.
@@ -28,6 +28,12 @@ Function Calling, 외부 MCP, 실제 가격 그래프를 구현했습니다. CSV
 2. [데이터 워크스페이스](https://codyssey-m1-2-gold.vercel.app/#data)에서 종목과 기간을 선택한 뒤 **조회하기**를 누릅니다. 저장된 데이터가 비어 있으면 **Yahoo 데이터 수집**으로 해당 기간의 데이터를 가져옵니다. **기록의 흐름** 그래프와 아래 데이터 표를 확인합니다.
 
 외부 MCP를 직접 재현하려면 로컬 stdio 서버를 Codex CLI에 등록합니다. 설정과 실제 호출에 사용한 종목·기간은 [MCP 연결 안내](docs/mcp.md#codex-cli-채팅-검증)에 있습니다.
+
+### MCP 실제 도구 호출 결과
+
+2026년 11월 15일(KST) Codex CLI 실행 기록에서 두 도구의 호출 인수, 완료 상태, 응답 일부와 채팅 답변을 발췌했습니다. 두 호출 모두 오류 없이 완료됐으며, 답변에서 AAPL 일봉 5건, 11월 13일 수정 종가 356.27 USD, Wilder RSI(14) 61.04를 확인할 수 있습니다.
+
+![Codex CLI의 실제 MCP 호출 기록 발췌. AAPL 일봉 조회와 RSI 계산의 호출 인수, 성공 상태, 응답 일부 및 채팅 답변](docs/screenshots/mcp-tool-results.png)
 
 ## 구현 범위
 
