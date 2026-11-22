@@ -22,7 +22,7 @@ Function Calling, 외부 MCP, 실제 가격 그래프, CSV/JSON 다운로드와 
 | 외부 MCP | 별도 Codex CLI 채팅에서 `get_price_history`와 `calculate_indicators`를 호출해 AAPL 일봉 5건과 Wilder RSI(14) 61.04를 확인했습니다. [실제 호출 결과 캡처](#mcp-실제-도구-호출-결과) · [재현 절차](docs/mcp.md#codex-cli-채팅-검증) |
 | 실제 가격 그래프 | 로컬 브라우저 검증 화면의 **기록의 흐름**에서 Yahoo AAPL 수정 종가 3건(2025년 10월 21~23일)이 그래프와 데이터 표에 함께 표시됩니다. [가격 그래프 캡처](docs/screenshots/price-chart.png) |
 | CSV/JSON 다운로드 | 운영 웹의 실제 다운로드 화면과 CSV·JSON 파일 내용 캡처를 로그인 없이 확인할 수 있습니다. [캡처 및 재현 절차](#csvjson-다운로드-확인) |
-| 다크 모드 | 운영 웹 오른쪽 위의 **다크 모드** 버튼으로 밝은 화면과 어두운 화면을 전환합니다. 로그인 전에 바로 확인할 수 있으며, 새로고침해도 같은 브라우저에 선택이 유지됩니다. [마켓노트 웹](https://codyssey-m1-2-gold.vercel.app/) |
+| 다크 모드 | 운영 웹의 같은 로그인 화면에서 라이트·다크 모드를 비교할 수 있습니다. [화면 비교 및 재현 방법](#라이트-모드와-다크-모드-비교) |
 
 운영 웹에서 채팅, 가격 그래프, 다운로드를 직접 확인하려면 접근이 허용된 평가용 계정이 필요합니다.
 
@@ -54,6 +54,16 @@ Function Calling, 외부 MCP, 실제 가격 그래프, CSV/JSON 다운로드와 
 2026년 11월 15일(KST) Codex CLI 실행 기록에서 두 도구의 호출 인수, 완료 상태, 응답 일부와 채팅 답변을 발췌했습니다. 두 호출 모두 오류 없이 완료됐으며, 답변에서 AAPL 일봉 5건, 11월 13일 수정 종가 356.27 USD, Wilder RSI(14) 61.04를 확인할 수 있습니다.
 
 ![Codex CLI의 실제 MCP 호출 기록 발췌. AAPL 일봉 조회와 RSI 계산의 호출 인수, 성공 상태, 응답 일부 및 채팅 답변](docs/screenshots/mcp-tool-results.png)
+
+### 라이트 모드와 다크 모드 비교
+
+운영 웹의 같은 로그인 화면을 같은 크기로 캡처했습니다. 이미지를 누르면 원본 크기로 볼 수 있습니다.
+
+| 라이트 모드 | 다크 모드 |
+| --- | --- |
+| [![운영 웹 라이트 모드 로그인 화면](docs/screenshots/production-light-mode.png)](docs/screenshots/production-light-mode.png) | [![운영 웹 다크 모드 로그인 화면](docs/screenshots/production-dark-mode.png)](docs/screenshots/production-dark-mode.png) |
+
+로그인 전에 오른쪽 위 **다크 모드** 버튼을 눌러 전환할 수 있습니다. 새로고침하면 같은 브라우저에서 선택한 모드가 유지됩니다. [마켓노트 운영 웹](https://codyssey-m1-2-gold.vercel.app/)
 
 ## 구현 범위
 
