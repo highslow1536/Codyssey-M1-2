@@ -10,6 +10,7 @@ import {
   toast,
   confirmAction,
 } from "./ui.js";
+import { formatDataExport, loadExportRows } from "./data-export.js";
 
 export function initializeData({ request, getInstrument, onInstrumentChange }) {
   let rows = [],
@@ -24,6 +25,8 @@ export function initializeData({ request, getInstrument, onInstrumentChange }) {
     "filter-submit",
     "import-data",
     "add-data",
+    "export-csv",
+    "export-json",
     "load-data-more",
     "instrument",
     "start-date",
@@ -392,6 +395,46 @@ export function initializeData({ request, getInstrument, onInstrumentChange }) {
       if (ownVersion === version) lock(false);
     }
   }
+  async function exportData(format) {
+    if (busy || !$("filter-form").reportValidity()) return;
+    const query = filter();
+    if (query.start_date > query.end_date) {
+      status("data-status", "시작일은 종료일보다 늦을 수 없습니다.", true);
+      return;
+    }
+    const ownVersion = version;
+    const label = format.toUpperCase();
+    const instrument = {
+      instrument_id: query.instrument_id,
+      currency: getInstrument()?.currency,
+    };
+    lock(true);
+    status("data-status", `${label} 파일을 준비하는 중…`);
+    try {
+      const records = await loadExportRows(request, query);
+      if (ownVersion !== version) return;
+      const content = formatDataExport(records, instrument, format);
+      const type = format === "csv" ? "text/csv" : "application/json";
+      const url = URL.createObjectURL(
+        new Blob([content], { type: `${type};charset=utf-8` }),
+      );
+      const link = el("a");
+      link.href = url;
+      link.download = `marketnote_${query.instrument_id}_${query.start_date}_${query.end_date}.${format}`;
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      status("data-status", `${label} 다운로드 · ${number(records.length)}건`);
+    } catch (error) {
+      if (ownVersion === version && error.name !== "AbortError") {
+        status("data-status", errorMessage(error), true);
+      }
+    } finally {
+      if (ownVersion === version) lock(false);
+    }
+  }
   $("filter-form").addEventListener("submit", (event) => {
     event.preventDefault();
     load();
@@ -403,6 +446,8 @@ export function initializeData({ request, getInstrument, onInstrumentChange }) {
   $("load-data-more").addEventListener("click", () => load(true));
   $("import-data").addEventListener("click", importData);
   $("add-data").addEventListener("click", () => openRecord());
+  $("export-csv").addEventListener("click", () => exportData("csv"));
+  $("export-json").addEventListener("click", () => exportData("json"));
   $("record-form").addEventListener("submit", saveRecord);
   $("reload-record").addEventListener("click", () => {
     $("record-dialog").close();

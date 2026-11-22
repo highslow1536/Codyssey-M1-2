@@ -207,7 +207,7 @@ PUT과 설정 PATCH는 `expected_revision`을 받아 현재 문서의 `revision`
 | DELETE | `/api/conversations/{id}` | 삭제 상태 표시 후 메시지·turn 문서도 삭제 | 작은 대화는 204, 정리 작업이 필요하면 202와 작업 ID |
 | POST | `/api/chat` | `message`, 선택적 `conversation_id`, `client_request_id` | 저장된 답변·대화 ID·도구 호출 요약·출처 |
 
-`/summary`, `/statistics`, `/export`, `/import` 같은 고정 경로는 `/{id}`보다 먼저 등록한다. API에서 데이터 CRUD 전체를 구현하고 웹에서도 모두 제공한다. 과제가 허용하는 최소 화면 동작 한 개보다 넓게 검증한다.
+`/summary`, `/statistics`, `/import` 같은 고정 경로는 `/{id}`보다 먼저 등록한다. API에서 데이터 CRUD 전체를 구현하고 웹에서도 모두 제공한다. 과제가 허용하는 최소 화면 동작 한 개보다 넓게 검증한다.
 
 `date`는 유효한 거래일 또는 사용자가 지정한 기록일이고, `value`는 유한한 양수다. `memo`는 최대 1,000자다. 시스템이 생성한 공급원 원본과 사용자 분석 데이터의 구분은 DB 설계를 따른다.
 
@@ -228,7 +228,7 @@ PUT과 설정 PATCH는 `expected_revision`을 받아 현재 문서의 `revision`
 | DELETE | `/api/watchlist/{instrument_id}` | 관심 종목 제거; 기존 알림은 자동 삭제하지 않음 |
 | POST | `/api/data/import` | 한 종목·기간의 실제 데이터 복사, 중복 방지; 초기 대량 수집은 CLI 사용 |
 | GET | `/api/data/statistics` | 분석 데이터의 추가 지표와 결측 정보 |
-| GET | `/api/data/export?format=csv` | 필터에 해당하는 전체 데이터 CSV/JSON; 페이지 한 장만 내보내지 않음 |
+| GET | `/api/data`의 `cursor` 페이지 조회 | 웹에서 필터에 해당하는 모든 페이지를 조회해 CSV/JSON 파일 생성 |
 | GET | `/api/alerts` | 규칙·현재 단계·마지막 관측·전송 결과 |
 | POST | `/api/alerts/preview` | 자연어/구조화 조건을 검증하고 사람에게 읽히는 조건 반환; 감시 시작 없음 |
 | POST | `/api/alerts` | 확인한 구조화 규칙 저장·감시 시작; 멱등 키 필요 |
