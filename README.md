@@ -12,6 +12,23 @@ Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약�
 
 실제 계정·키 준비는 [첫 배포 안내](docs/first-deploy.md), 서비스별 설정과 운영은 [배포 런북](docs/deployment.md)을 따릅니다.
 
+## 보너스 과제 평가 안내
+
+Function Calling, 외부 MCP, 실제 가격 그래프를 구현했습니다. CSV/JSON 다운로드와 다크 모드 토글은 미구현 상태입니다. 아래 캡처와 호출 기록은 서비스에 로그인하지 않아도 확인할 수 있습니다.
+
+| 평가 항목 | 증빙에서 확인할 내용 |
+| --- | --- |
+| Function Calling | 운영 채팅의 `summarize_dataset` 호출 성공 기록과 Yahoo 출처를 확인할 수 있습니다. 답변의 S&P 500 관측 251건과 마지막 수정 종가 7,663.43은 별도로 조회한 데이터 요약과 일치했습니다. [운영 채팅 화면](#운영-채팅-화면) |
+| 외부 MCP | 별도 Codex CLI 채팅에서 `get_price_history`가 AAPL 일봉 5건을, `calculate_indicators`가 Wilder RSI(14) 61.04를 반환했습니다. 호출별 입력과 실제 결과가 기록되어 있습니다. [Codex CLI 호출 기록](docs/mcp.md#codex-cli-채팅-검증) |
+| 실제 가격 그래프 | 로컬 브라우저 검증 화면의 **기록의 흐름**에서 Yahoo AAPL 수정 종가 3건(2025년 10월 21~23일)이 그래프와 데이터 표에 함께 표시됩니다. [가격 그래프 캡처](docs/screenshots/price-chart.png) |
+
+운영 웹에서 직접 확인하려면 접근이 허용된 평가용 계정이 필요합니다.
+
+1. [AI 리서치 대화](https://codyssey-m1-2-gold.vercel.app/#chat)에서 보유한 종목 데이터의 관측 수와 마지막 가격을 `summarize_dataset`으로 확인해 달라고 요청합니다. 답변의 도구 호출 기록과 출처를 확인합니다.
+2. [데이터 워크스페이스](https://codyssey-m1-2-gold.vercel.app/#data)에서 종목과 기간을 선택한 뒤 **조회하기**를 누릅니다. 저장된 데이터가 비어 있으면 **Yahoo 데이터 수집**으로 해당 기간의 데이터를 가져옵니다. **기록의 흐름** 그래프와 아래 데이터 표를 확인합니다.
+
+외부 MCP를 직접 재현하려면 로컬 stdio 서버를 Codex CLI에 등록합니다. 설정과 실제 호출에 사용한 종목·기간은 [MCP 연결 안내](docs/mcp.md#codex-cli-채팅-검증)에 있습니다.
+
 ## 구현 범위
 
 - Python 가상환경, 버전 잠금, FastAPI·Swagger·CORS·요청 ID·오류 응답.
