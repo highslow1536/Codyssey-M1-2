@@ -9,6 +9,7 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23183e34'/%3E%3Cpath d='M9 28V12l11 11 11-11v16' fill='none' stroke='%23d8ebaa' stroke-width='3'/%3E%3C/svg%3E"
     />
+    <script src="./js/theme.js"></script>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./config.js"></script>
     <script type="module" src="./js/app.js"></script>
@@ -68,9 +69,15 @@
           <span
             >개인 리서치 /
             <strong id="breadcrumb">데이터 워크스페이스</strong></span
-          ><span class="connection"
-            ><i></i><span id="connection-label">로그인 대기</span></span
           >
+          <div class="topbar-actions">
+            <span class="connection"
+              ><i></i><span id="connection-label">로그인 대기</span></span
+            >
+            <button id="theme-toggle" type="button" aria-pressed="false">
+              다크 모드
+            </button>
+          </div>
         </header>
         <main id="main">
           <section

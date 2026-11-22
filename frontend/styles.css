@@ -9,12 +9,29 @@
   --line: #e4e8e1;
   --red: #b7473e;
   --radius: 14px;
+  color-scheme: light;
   font-family: "Noto Sans KR", system-ui, sans-serif;
   color: var(--ink);
   background: var(--bg);
   font-size: 14px;
   line-height: 1.65;
   font-synthesis: none;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141b18;
+  --paper: #1d2823;
+  --ink: #edf4ec;
+  --muted: #aebeb1;
+  --green: #285743;
+  --accent: #d8ebaa;
+  --line: #3d5146;
+  --red: #ffaaa0;
+  --surface-soft: #24352c;
+  --surface-highlight: #2d4235;
+  --link-color: #c4dda9;
+  --warning-bg: #432e29;
+  --warning-border: #7d5047;
 }
 * {
   box-sizing: border-box;
@@ -54,7 +71,7 @@ input,
 select,
 textarea {
   color: var(--ink);
-  background: #fff;
+  background: var(--paper);
   border: 1px solid #dce2da;
   border-radius: 8px;
   padding: 11px 12px;
@@ -309,6 +326,27 @@ strong {
   color: #576253;
   font-weight: 500;
 }
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#theme-toggle {
+  min-height: 32px;
+  padding: 4px 8px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#theme-toggle:hover,
+#theme-toggle[aria-pressed="true"] {
+  background: var(--green);
+  color: var(--accent);
+}
 .connection {
   display: flex;
   align-items: center;
@@ -362,7 +400,7 @@ main {
   padding: 20px 22px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--paper);
 }
 .filter-bar label {
   color: #7d877a;
@@ -409,7 +447,7 @@ main {
   background: #285446;
 }
 .secondary {
-  background: #fff;
+  background: var(--paper);
   border-color: #dce3d6;
   color: #5d6e55;
 }
@@ -782,7 +820,7 @@ td:first-child {
 }
 .login-card {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--paper);
   border-radius: 18px;
   padding: 34px;
   max-width: 420px;
@@ -831,7 +869,7 @@ td:first-child {
 }
 .divider span {
   position: relative;
-  background: #fff;
+  background: var(--paper);
   padding: 0 10px;
 }
 .login-footnote {
@@ -978,7 +1016,7 @@ td:first-child {
   font-size: 10px;
   padding: 9px 12px;
   border: 1px solid #e1e7d9;
-  background: #fff;
+  background: var(--paper);
   border-radius: 20px;
   color: #738767;
 }
@@ -1785,7 +1823,7 @@ dialog > p {
   .topbar {
     gap: 8px;
   }
-  .topbar .connection {
+  .topbar-actions {
     margin-left: auto;
   }
 }
@@ -1993,7 +2031,7 @@ dialog > p {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #fff;
+  background: var(--paper);
 }
 .alert-stage-head {
   display: flex;
@@ -2105,4 +2143,112 @@ dialog > p {
   .alert-cond-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+}
+
+/* Dark colors for components that use their own light palette. */
+[data-theme="dark"] .sidebar {
+  background: #19241e;
+}
+[data-theme="dark"] :is(input, select, textarea) {
+  background: var(--bg);
+  border-color: var(--line);
+}
+[data-theme="dark"] :is(input, select, textarea):focus {
+  border-color: var(--link-color);
+  box-shadow: 0 0 0 3px #c4dda926;
+}
+[data-theme="dark"] dialog {
+  background: var(--paper);
+}
+[data-theme="dark"] dialog::backdrop {
+  background: #080e0bb3;
+}
+[data-theme="dark"] :is(
+  .insight-panel, .context-strip, .composer, th, .conversation-item,
+  .research-highlights li, .research-item, .briefing-schedule,
+  .briefing-history-item, .briefing-text, .alert-rule, .alert-history-item,
+  .alert-preview-text
+) {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+[data-theme="dark"] :is(
+  .avatar, .count, .source-chip, .empty-icon, .conversation-item.selected,
+  .message.user, .icon-button:hover, .secondary:hover:not(:disabled),
+  .row-actions button:hover
+) {
+  background: var(--surface-highlight);
+  color: var(--ink);
+}
+[data-theme="dark"] :is(
+  .account, .outline-tag, .secondary, .suggestions button, .text-link,
+  td, .research-line, .research-history li, .conversation-item.selected
+) {
+  border-color: var(--line);
+}
+[data-theme="dark"] :is(
+  .sidebar-label, .nav-link:not(.active), .sidebar-note small,
+  .outline-tag, .filter-bar label, .subtle, .icon-button, .chip, .chart,
+  .chart-note, .insight-panel p, .quality-note, th, td, td:first-child,
+  .page-footer, .status:not(.error), .empty, .login-intro p, .login-points,
+  .login-card label, .divider, .login-footnote, .conversation-open small,
+  .chat-instrument-label, .context-strip, .chat-welcome, .message-label,
+  .message-tools, .composer-bottom > span, .chat-footnote, dialog label,
+  dialog > p, .research-kind, .research-unavailable, .research-history li,
+  .research-item p, .briefing-history-text, .alert-history-text
+) {
+  color: var(--muted);
+}
+[data-theme="dark"] .metric:not(:first-child) :is(.metric-label, .metric-unit, .metric-caption) {
+  color: var(--muted);
+}
+[data-theme="dark"] :is(
+  .topbar strong, .empty h3, .login-points strong, .conversation-open strong,
+  .chat-welcome h3, .message.assistant, .research-summary, .alert-progress,
+  td.number
+) {
+  color: var(--ink);
+}
+[data-theme="dark"] :is(
+  .brand small, .eyebrow, .page-heading h1 span, .secondary, .text-link,
+  .row-actions button, .suggestions button, .message-sources a,
+  .research-rating, .research-item a, .research-highlights a,
+  .research-panel a, .research-links a,
+  .briefing-sources a
+),
+[data-theme="dark"] :is(#research-cnn, #research-vix) a {
+  color: var(--link-color);
+}
+[data-theme="dark"] .positive {
+  color: #a9dfb4;
+}
+[data-theme="dark"] .row-actions .delete {
+  color: var(--red);
+}
+[data-theme="dark"] :is(.chat-error, .briefing-warnings, .alert-warnings) {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--red);
+}
+[data-theme="dark"] :is(#research-cnn-chip, #research-vix-chip, #research-news-chip)[data-quality="stale"] {
+  background: #403722;
+  border-color: #71623d;
+  color: #efd69b;
+}
+[data-theme="dark"] :is(#research-cnn-chip, #research-vix-chip, #research-news-chip):is([data-quality="unavailable"], [data-quality="insufficient_data"]) {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--red);
+}
+[data-theme="dark"] .chart svg text {
+  fill: var(--muted);
+}
+[data-theme="dark"] .chart svg line {
+  stroke: var(--line);
+}
+[data-theme="dark"] .chart svg path {
+  fill: var(--surface-highlight);
+}
+[data-theme="dark"] .chart svg polyline {
+  stroke: var(--link-color);
 }
