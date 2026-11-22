@@ -12,6 +12,16 @@ Yahoo의 실제 일봉을 Firestore에 저장하고, 저장한 데이터 요약�
 
 실제 계정·키 준비는 [첫 배포 안내](docs/first-deploy.md), 서비스별 설정과 운영은 [배포 런북](docs/deployment.md)을 따릅니다.
 
+## 프로젝트 구조
+
+[**인터랙티브 구조 지도 열기**](https://highslow1536.github.io/Codyssey-M1-2/) · 로그인 없이 둘러볼 수 있습니다.
+
+웹 화면에서 서버와 Firestore로 요청이 이어지는 구조를 살펴보세요. 시장 조회 코드는 웹 서버와 로컬 MCP가 공유하고, 백그라운드 작업이 Discord 브리핑과 가격 알림을 처리합니다.
+
+지도의 **Start here**에서 전체 구조를 둘러보고, **Flows**에서 AI 답변 생성, 시장 브리핑 조회, Discord 예약 전송을 단계별로 따라갈 수 있습니다.
+
+[![마켓노트 구조 지도 전체 보기](docs/screenshots/floorplan.jpg)](https://highslow1536.github.io/Codyssey-M1-2/)
+
 ## 보너스 과제 평가 안내
 
 Function Calling, 외부 MCP, 실제 가격 그래프, CSV/JSON 다운로드와 다크 모드를 구현했습니다. 아래 캡처와 호출 기록은 서비스에 로그인하지 않아도 확인할 수 있습니다.
